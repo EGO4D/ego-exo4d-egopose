@@ -21,17 +21,6 @@ conda activate metro-hand
 conda install pytorch==1.4.0 cudatoolkit=10.1 -c pytorch
 pip install torch==1.4.0 torchvision==0.5.0
 
-# export INSTALL_DIR=$PWD
-
-# # Install apex
-# cd $INSTALL_DIR
-# git clone https://github.com/NVIDIA/apex.git
-# cd apex
-# python setup.py install --cuda_ext --cpp_ext
-
-# Install OpenDR
-# pip install opendr matplotlib
-
 # Install METRO
 python setup.py build develop
 
@@ -46,8 +35,6 @@ pip install ./manopth/.
 git clone --depth 1 --branch v0.6.2 git@github.com:facebookresearch/pytorch3d.git thirdparty/pytorch3d
 pip install ./thirdparty/pytorch3d
 pip install ./thirdparty/libzhifan
-
-# unset INSTALL_DIR
 ```
 
 ### Install 100DOH detector
