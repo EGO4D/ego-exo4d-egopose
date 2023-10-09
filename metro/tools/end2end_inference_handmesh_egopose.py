@@ -8,8 +8,8 @@ End-to-end inference codes for
 
 Usage:
 conda activate metro-hand
-    python ./metro/tools/end2end_inference_handmesh_egopose.py  \
-        --resume_checkpoint ./models/metro_release/metro_hand_state_dict.bin
+python ./metro/tools/end2end_inference_handmesh_egopose.py  \
+    --resume_checkpoint ./models/metro_release/metro_hand_state_dict.bin
 """
 
 from __future__ import absolute_import, division, print_function
@@ -324,10 +324,9 @@ def main(args):
     uid = args.uid
     assert uid is not None
     # df = pd.read_csv(f'./egopose_outputs/dets/{uid}.csv')
-    frames_root = os.path.join('./egopose_outputs/handcrops/', uid)
+    frames_root = os.path.join('./egopose_storage/handcrops/', uid)
     image_list = sorted(os.listdir(frames_root))
-    image_list = image_list[1000:1001] # image_list = image_list[args.st:args.ed]
-    output_dir = f'./egopose_outputs/results/{uid}/'
+    output_dir = f'./egopose_storage/results/{uid}/'
     run_inference(image_list, _metro_network, mano_model, renderer, mesh_sampler, output_dir=output_dir, frames_root=frames_root)
 
 if __name__ == "__main__":
