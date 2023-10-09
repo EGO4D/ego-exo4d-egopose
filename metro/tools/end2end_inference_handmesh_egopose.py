@@ -2,19 +2,23 @@
 Copyright (c) Microsoft Corporation.
 Licensed under the MIT license.
 
-End-to-end inference codes for 
+End-to-end inference codes for
 3D hand mesh reconstruction from an image
+
+
+Usage:
+conda activate metro-hand
+    python ./metro/tools/end2end_inference_handmesh_egopose.py  \
+        --resume_checkpoint ./models/metro_release/metro_hand_state_dict.bin
 """
 
 from __future__ import absolute_import, division, print_function
 import argparse
 import os
 import os.path as op
-import code
 import json
 import torch
 import torchvision.models as models
-from torchvision.utils import make_grid
 import numpy as np
 import cv2
 from metro.modeling.bert import BertConfig, METRO
@@ -25,15 +29,16 @@ from metro.modeling.hrnet.config import config as hrnet_config
 from metro.modeling.hrnet.config import update_config as hrnet_update_config
 import metro.modeling.data.config as cfg
 
-from metro.utils.renderer import Renderer, visualize_reconstruction, visualize_reconstruction_test, visualize_reconstruction_no_text, visualize_reconstruction_and_att_local
-from metro.utils.geometric_layers import orthographic_projection
 from metro.utils.logger import setup_logger
 from metro.utils.miscellaneous import mkdir, set_seed
 
-from PIL import Image
+from PIL import Image, ImageOps
 from torchvision import transforms
+from libzhifan.geometry import SimpleMesh, projection
+import tqdm
 
-transform = transforms.Compose([           
+
+transform = transforms.Compose([
                     transforms.Resize(224),
                     transforms.CenterCrop(224),
                     transforms.ToTensor(),
@@ -41,111 +46,118 @@ transform = transforms.Compose([
                         mean=[0.485, 0.456, 0.406],
                         std=[0.229, 0.224, 0.225])])
 
-transform_visualize = transforms.Compose([           
+transform_visualize = transforms.Compose([
                     transforms.Resize(224),
                     transforms.CenterCrop(224),
                     transforms.ToTensor()])
 
-def run_inference(args, image_list, _metro_network, mano, renderer, mesh_sampler):
+
+def orthographic_projection(X, camera):
+    """Perform orthographic projection of 3D points X using the camera parameters
+    Args:
+        X: size = [B, N, 3]
+        camera: size = [B, 3]
+    Returns:
+        Projected 2D points -- size = [B, N, 2]
+    """ 
+    camera = camera.view(-1, 1, 3)
+    X_trans = X[:, :, :2] + camera[:, :, 1:]
+    shape = X_trans.shape
+    X_2d = (camera[:, :, 0] * X_trans.view(shape[0], -1)).view(shape)
+    return X_2d
+
+
+def project_hand(img, hand_verts, hand_faces, camera):
+    """
+    Args:
+        camera: (3,)
+    """
+    focal_length = 1000 # constant in METRO
+    res = img.shape[0]
+
+    camera_t = torch.as_tensor(
+        np.array([camera[1], camera[2], 2*focal_length/(res * camera[0] +1e-9)])
+    )[None]
+
+    image = torch.as_tensor(np.asarray(img))
+
+    hand_mesh = SimpleMesh(hand_verts + camera_t.numpy(), hand_faces)  # note in METRO they apply to camera's T
+    rend = projection.pytorch3d_perspective_projection(
+        hand_mesh, cam_f=(focal_length,focal_length), cam_p=(res//2, res//2),
+        image=image,
+        in_ndc=False, coor_sys='nr')
+    return rend
+
+
+def run_inference(image_list, _metro_network, mano, renderer, mesh_sampler, output_dir, frames_root):
+    """
+    image_list: path to abs jpg files
+
+    Outputs:
+        - images will be saved to <output_dir>/rends
+        - 3d predictions will be saved to <output_dir>/pred_3ds
+        - 2d predictions will be saved to <output_dir>/pred_2ds
+    """
+    out_rend_dir = op.join(output_dir, 'rends')
+    out_3d_dir = op.join(output_dir, 'pred_3ds')
+    out_2d_dir = op.join(output_dir, 'pred_2ds')
+    os.makedirs(out_rend_dir, exist_ok=True)
+    os.makedirs(out_3d_dir, exist_ok=True)
+    os.makedirs(out_2d_dir, exist_ok=True)
+
     # switch to evaluate mode
     _metro_network.eval()
-    
-    for image_file in image_list:
-        if 'pred' not in image_file:
-            att_all = []
-            img = Image.open(image_file)
-            img_tensor = transform(img)
-            img_visual = transform_visualize(img)
 
-            batch_imgs = torch.unsqueeze(img_tensor, 0).cuda()
-            batch_visual_imgs = torch.unsqueeze(img_visual, 0).cuda()
-            pred_camera, pred_3d_joints, pred_vertices_sub, pred_vertices, hidden_states, att = _metro_network(batch_imgs, mano, mesh_sampler)       
-            # obtain 3d joints from full mesh
-            pred_3d_joints_from_mesh = mano.get_3d_joints(pred_vertices)
-            pred_3d_pelvis = pred_3d_joints_from_mesh[:,cfg.J_NAME.index('Wrist'),:]
-            pred_3d_joints_from_mesh = pred_3d_joints_from_mesh - pred_3d_pelvis[:, None, :]
-            pred_vertices = pred_vertices - pred_3d_pelvis[:, None, :]
+    for img_name in tqdm.tqdm(image_list, total=len(image_list)):
+        image_file = os.path.join(frames_root, img_name)
+        side = 'left' if 'left' in img_name else 'right'
+        # out_fpath = os.path.join(output_dir, os.path.basename(image_file))
+        # if os.path.exists(out_fpath):
+        #     continue
 
-            # save attantion
-            att_max_value = att[-1]
-            att_cpu = np.asarray(att_max_value.cpu().detach())
-            att_all.append(att_cpu)
+        img = Image.open(image_file)
+        if side == 'left':
+            img = ImageOps.mirror(img)
+        img_tensor = transform(img)
+        img_visual = transform_visualize(img)
 
-            # obtain 3d joints, which are regressed from the full mesh
-            pred_3d_joints_from_mesh = mano.get_3d_joints(pred_vertices)
-            # obtain 2d joints, which are projected from 3d joints of mesh
-            pred_2d_joints_from_mesh = orthographic_projection(pred_3d_joints_from_mesh.contiguous(), pred_camera.contiguous())
-            pred_2d_coarse_vertices_from_mesh = orthographic_projection(pred_vertices_sub.contiguous(), pred_camera.contiguous())
+        batch_imgs = torch.unsqueeze(img_tensor, 0).cuda()
+        batch_visual_imgs = torch.unsqueeze(img_visual, 0).cuda()
+        pred_camera, pred_3d_joints, pred_vertices_sub, pred_vertices, hidden_states, att = _metro_network(batch_imgs, mano, mesh_sampler)
+        # obtain 3d joints from full mesh
+        pred_3d_joints_from_mesh = mano.get_3d_joints(pred_vertices)
+        pred_3d_pelvis = pred_3d_joints_from_mesh[:,cfg.J_NAME.index('Wrist'),:]
+        pred_3d_joints_from_mesh = pred_3d_joints_from_mesh - pred_3d_pelvis[:, None, :]
+        pred_vertices = pred_vertices - pred_3d_pelvis[:, None, :]
 
-            # visual_imgs = visualize_mesh_no_text(renderer,
-            #                     batch_visual_imgs[0],
-            #                     pred_vertices[0].detach(),  
-            #                     pred_camera.detach())
-            # import trimesh
-            # pred_vertices_arr = pred_vertices[0].detach().cpu().numpy()
-            # mhand = trimesh.Trimesh(vertices=pred_vertices[0].detach().cpu().numpy(),
-            #                         faces=renderer.faces)
-            # torch.save(dict(
-            #     pred_vertices=pred_vertices_arr,
-            #     pred_camera=pred_camera.detach().cpu().numpy()
-            # ), image_file[:-4] + '_pred.pt')
+        # obtain 3d joints, which are regressed from the full mesh
+        pred_3d_joints_from_mesh = mano.get_3d_joints(pred_vertices)
+        # obtain 2d joints, which are projected from 3d joints of mesh
+        pred_2d_joints_from_mesh = orthographic_projection(pred_3d_joints_from_mesh.contiguous(), pred_camera.contiguous())
+        # pred_2d_coarse_vertices_from_mesh = orthographic_projection(pred_vertices_sub.contiguous(), pred_camera.contiguous())
 
-            visual_imgs_att = visualize_mesh_and_attention( renderer, batch_visual_imgs[0],
-                                                        pred_vertices[0].detach(), 
-                                                        pred_vertices_sub[0].detach(), 
-                                                        pred_2d_coarse_vertices_from_mesh[0].detach(),
-                                                        pred_2d_joints_from_mesh[0].detach(),
-                                                        pred_camera.detach(),
-                                                        att[-1][0].detach())
+        rend_img = project_hand(img=batch_visual_imgs[0].cpu().numpy().transpose(1, 2, 0),
+                        hand_verts=pred_vertices[0].detach().cpu().numpy(),
+                        hand_faces=renderer.faces,
+                        camera=pred_camera.detach().cpu().numpy())
+        if side == 'left':
+            rend_img = rend_img[:, ::-1, :]
 
-            visual_imgs = visual_imgs_att.transpose(1,2,0)
-            visual_imgs = np.asarray(visual_imgs)
-                    
-            temp_fname = image_file[:-4] + '_metro_pred.jpg'
-            print('save to ', temp_fname)
-            cv2.imwrite(temp_fname, np.asarray(visual_imgs[:,:,::-1]*255))
+        """ Save rendered images """
+        visual_imgs = rend_img
+        out_fpath = os.path.join(out_rend_dir, os.path.basename(image_file))
+        # print('save to ', out_fpath)
+        cv2.imwrite(out_fpath, np.asarray(visual_imgs[:,:,::-1]*255))
 
-    return 
+        """ Save 3d predictions """ 
+        out_3d_path = os.path.join(out_3d_dir, os.path.basename(image_file).replace('jpg', 'pth'))
+        torch.save(pred_3d_joints_from_mesh, out_3d_path)
 
+        """ Save 2d predictions """
+        out_2d_path = os.path.join(out_2d_dir, os.path.basename(image_file).replace('jpg', 'pth'))
+        torch.save(pred_2d_joints_from_mesh, out_2d_path)
 
-def visualize_mesh_and_attention( renderer, images,
-                    pred_vertices_full,
-                    pred_vertices, 
-                    pred_2d_vertices,
-                    pred_2d_joints,
-                    pred_camera,
-                    attention):
-
-    """Tensorboard logging."""
-    
-    img = images.cpu().numpy().transpose(1,2,0)
-    # Get predict vertices for the particular example
-    vertices_full = pred_vertices_full.cpu().numpy() 
-    vertices = pred_vertices.cpu().numpy()
-    vertices_2d = pred_2d_vertices.cpu().numpy()
-    joints_2d = pred_2d_joints.cpu().numpy()
-    cam = pred_camera.cpu().numpy()
-    att = attention.cpu().numpy()
-    # Visualize reconstruction and attention
-    rend_img = visualize_reconstruction_and_att_local(img, 224, vertices_full, vertices, vertices_2d, cam, renderer, joints_2d, att, color='pink')
-    rend_img = rend_img.transpose(2,0,1)
-
-    return rend_img
-
-
-def visualize_mesh_no_text( renderer,
-                    images,
-                    pred_vertices, 
-                    pred_camera):
-    """Tensorboard logging."""
-    img = images.cpu().numpy().transpose(1,2,0)
-    # Get predict vertices for the particular example
-    vertices = pred_vertices.cpu().numpy()
-    cam = pred_camera.cpu().numpy()
-    # Visualize reconstruction only
-    rend_img = visualize_reconstruction_no_text(img, 224, vertices, cam, renderer, color='hand')
-    rend_img = rend_img.transpose(2,0,1)
-    return rend_img
+    return
 
 
 def parse_args():
@@ -153,8 +165,12 @@ def parse_args():
     #########################################################
     # Data related arguments
     #########################################################
-    parser.add_argument("--image_file_or_path", default='./test_images/hand', type=str, 
-                        help="test data")
+    parser.add_argument("--uid", type=str, default=None)
+    parser.add_argument("--st", type=int, default=0)
+    parser.add_argument("--ed", type=int, default=999999999999)
+    parser.add_argument("--valid_mp4_segments", default='./epic_hor_data/valid_mp4_segments.json', type=str)
+    # parser.add_argument("--image_file_or_path", default='./test_images/hand', type=str,
+    #                     help="test data")
     #########################################################
     # Loading/saving checkpoints
     #########################################################
@@ -169,31 +185,34 @@ def parse_args():
     #########################################################
     parser.add_argument('-a', '--arch', default='hrnet-w64',
                     help='CNN backbone architecture: hrnet-w64, hrnet, resnet50')
-    parser.add_argument("--num_hidden_layers", default=4, type=int, required=False, 
+    parser.add_argument("--num_hidden_layers", default=4, type=int, required=False,
                         help="Update model config if given")
-    parser.add_argument("--hidden_size", default=-1, type=int, required=False, 
+    parser.add_argument("--hidden_size", default=-1, type=int, required=False,
                         help="Update model config if given")
-    parser.add_argument("--num_attention_heads", default=4, type=int, required=False, 
+    parser.add_argument("--num_attention_heads", default=4, type=int, required=False,
                         help="Update model config if given. Note that the division of "
                         "hidden_size / num_attention_heads should be in integer.")
-    parser.add_argument("--intermediate_size", default=-1, type=int, required=False, 
+    parser.add_argument("--intermediate_size", default=-1, type=int, required=False,
                         help="Update model config if given.")
-    parser.add_argument("--input_feat_dim", default='2051,512,128', type=str, 
-                        help="The Image Feature Dimension.")          
-    parser.add_argument("--hidden_feat_dim", default='1024,256,64', type=str, 
-                        help="The Image Feature Dimension.")   
+    parser.add_argument("--input_feat_dim", default='2051,512,128', type=str,
+                        help="The Image Feature Dimension.")
+    parser.add_argument("--hidden_feat_dim", default='1024,256,64', type=str,
+                        help="The Image Feature Dimension.")
     #########################################################
     # Others
     #########################################################
-    parser.add_argument("--device", type=str, default='cuda', 
+    parser.add_argument("--device", type=str, default='cuda',
                         help="cuda or cpu")
-    parser.add_argument('--seed', type=int, default=88, 
+    parser.add_argument('--seed', type=int, default=88,
                         help="random seed for initialization.")
 
 
     args = parser.parse_args()
     return args
 
+class DummyRenderer(object):
+    def __init__(self):
+        self.faces = None
 
 def main(args):
     global logger
@@ -212,9 +231,11 @@ def main(args):
     mano_model.layer = mano_model.layer.cuda()
     mesh_sampler = Mesh()
     # Renderer for visualization
-    renderer = Renderer(faces=mano_model.face)
+    # renderer = Renderer(faces=mano_model.face)
+    renderer = DummyRenderer()
+    renderer.faces=mano_model.face
 
-    # Load pretrained model    
+    # Load pretrained model
     logger.info("Inference: Loading from checkpoint {}".format(args.resume_checkpoint))
 
     if args.resume_checkpoint!=None and args.resume_checkpoint!='None' and 'state_dict' not in args.resume_checkpoint:
@@ -232,7 +253,7 @@ def main(args):
             config = config_class.from_pretrained(args.model_name_or_path)
 
             config.output_attentions = False
-            config.img_feature_dim = input_feat_dim[i] 
+            config.img_feature_dim = input_feat_dim[i]
             config.output_feature_dim = output_feat_dim[i]
             args.hidden_size = hidden_feat_dim[i]
             args.intermediate_size = int(args.hidden_size*4)
@@ -249,7 +270,7 @@ def main(args):
 
             # init a transformer encoder and append it to a list
             assert config.hidden_size % config.num_attention_heads == 0
-            model = model_class(config=config) 
+            model = model_class(config=config)
             logger.info("Init model from scratch.")
             trans_encoder.append(model)
 
@@ -300,21 +321,16 @@ def main(args):
     _metro_network.to(args.device)
     logger.info("Run inference")
 
-    image_list = []
-    if not args.image_file_or_path:
-        raise ValueError("image_file_or_path not specified")
-    if op.isfile(args.image_file_or_path):
-        image_list = [args.image_file_or_path]
-    elif op.isdir(args.image_file_or_path):
-        # should be a path with images only
-        for filename in os.listdir(args.image_file_or_path):
-            if filename.endswith(".png") or filename.endswith(".jpg") and 'pred' not in filename:
-                image_list.append(args.image_file_or_path+'/'+filename) 
-    else:
-        raise ValueError("Cannot find images at {}".format(args.image_file_or_path))
-
-    run_inference(args, image_list, _metro_network, mano_model, renderer, mesh_sampler)    
+    uid = args.uid
+    assert uid is not None
+    # df = pd.read_csv(f'./egopose_outputs/dets/{uid}.csv')
+    frames_root = os.path.join('./egopose_outputs/handcrops/', uid)
+    image_list = sorted(os.listdir(frames_root))
+    image_list = image_list[1000:1001] # image_list = image_list[args.st:args.ed]
+    output_dir = f'./egopose_outputs/results/{uid}/'
+    run_inference(image_list, _metro_network, mano_model, renderer, mesh_sampler, output_dir=output_dir, frames_root=frames_root)
 
 if __name__ == "__main__":
     args = parse_args()
+    args.uid = '98f58f0f-53d6-4e41-bf41-d8d74ccbc37c'
     main(args)

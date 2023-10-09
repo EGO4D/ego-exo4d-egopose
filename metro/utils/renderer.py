@@ -16,6 +16,9 @@ from opendr.renderer import ColoredRenderer, TexturedRenderer
 from opendr.lighting import LambertianPointLight
 import random
 
+# import pytorch3d
+# from libzhifan.geometry import SimpleMesh, visualize_mesh, projection
+
 
 # Rotate the points by a specified angle.
 def rotateY(points, angle):
@@ -321,7 +324,7 @@ def visualize_reconstruction_and_att(img, img_size, vertices_full, vertices, ver
     res = img.shape[1]
     camera_t = np.array([camera[1], camera[2], 2*focal_length/(res * camera[0] +1e-9)])
     rend_img = renderer.render(vertices_full, camera_t=camera_t,
-                               img=img, use_bg=True, 
+                               img=img, use_bg=True,
                                focal_length=focal_length, body_color='light_blue')
 
 
@@ -337,7 +340,7 @@ def visualize_reconstruction_and_att(img, img_size, vertices_full, vertices, ver
     ##### find avg
     for h in range(4):
         att_per_img = attention[h]
-        all_head = all_head + att_per_img   
+        all_head = all_head + att_per_img
     all_head = all_head/4
 
     col_sums = all_head.sum(axis=0)
@@ -348,14 +351,14 @@ def visualize_reconstruction_and_att(img, img_size, vertices_full, vertices, ver
 
     combined = []
     if vertex_num>400:  # body
-        selected_joints = [6,7,4,5,13] # [6,7,4,5,13,12] 
-    else: # hand  
+        selected_joints = [6,7,4,5,13] # [6,7,4,5,13,12]
+    else: # hand
         selected_joints = [0, 4, 8, 12, 16, 20]
     # Draw attention
     for ii in range(len(selected_joints)):
         reference_id = selected_joints[ii]
         ref_point = ref_points[reference_id]
-        attention_to_show = all_head[reference_id][14::] 
+        attention_to_show = all_head[reference_id][14::]
         min_v = np.min(attention_to_show)
         max_v = np.max(attention_to_show)
         norm_attention_to_show = (attention_to_show - min_v)/(max_v-min_v)
@@ -367,7 +370,7 @@ def visualize_reconstruction_and_att(img, img_size, vertices_full, vertices, ver
         for jj in range(vertices_norm.shape[0]):
             x = int(vertices_norm[jj,0])
             y = int(vertices_norm[jj,1])
-            cv2.circle(image,(x,y), 1, (255,255,255), -1) 
+            cv2.circle(image,(x,y), 1, (255,255,255), -1)
 
         total_to_draw = []
         for jj in range(vertices_norm.shape[0]):
@@ -393,25 +396,60 @@ def visualize_reconstruction_and_att(img, img_size, vertices_full, vertices, ver
 
     return final
 
+def project_hand(img, hand_verts, hand_faces, camera):
+    """
+    Args:
+        camera: (3,)
+    """
+    import torch
+    from libzhifan.geometry import SimpleMesh, projection
+    focal_length = 1000 # constact in METRO
+    res = img.shape[0]
 
-def visualize_reconstruction_and_att_local(img, img_size, vertices_full, vertices, vertices_2d, camera, renderer, ref_points, attention, color='light_blue', focal_length=1000):
+    camera_t = torch.as_tensor(
+        np.array([camera[1], camera[2], 2*focal_length/(res * camera[0] +1e-9)])
+    )[None]
+
+    image = torch.as_tensor(np.asarray(img))
+
+    hand_mesh = SimpleMesh(hand_verts + camera_t.numpy(), hand_faces)  # note in METRO they apply to camera's T
+    rend = projection.pytorch3d_perspective_projection(
+        hand_mesh, cam_f=(focal_length,focal_length), cam_p=(res//2, res//2),
+        image=image,
+        in_ndc=False, coor_sys='nr')
+    return rend
+
+def visualize_reconstruction_and_att_local(img, img_size, vertices_full, vertices,
+                                           vertices_2d, camera, renderer, ref_points,
+                                           attention, color='light_blue',
+                                           focal_length=1000):
     """Overlays gt_kp and pred_kp on img.
     Draws vert with text.
     Renderer is an instance of SMPLRenderer.
     """
     # Fix a flength so i can render this with persp correct scale
-    res = img.shape[1]
-    camera_t = np.array([camera[1], camera[2], 2*focal_length/(res * camera[0] +1e-9)])
-    rend_img = renderer.render(vertices_full, camera_t=camera_t,
-                               img=img, use_bg=True, 
-                               focal_length=focal_length, body_color=color)
+    # res = img.shape[1]
+    # camera_t = np.array([camera[1], camera[2], 2*focal_length/(res * camera[0] +1e-9)])
+
+    # METRO's original mesh doesn't show
+    # rend_img = renderer.render(vertices_full, camera_t=camera_t,
+    #                            img=img, use_bg=True,
+    #                            focal_length=focal_length, body_color=color)
+    rend_img = project_hand(img, vertices_full, renderer.faces, camera)
+    # hand_faces = renderer.faces
+    # hand_mesh = SimpleMesh(vertices_full + camera_t, hand_faces)  # note in METRO they apply to camera's T
+    # rend_img = projection.pytorch3d_perspective_projection(
+    #     hand_mesh, cam_f=(focal_length,focal_length), cam_p=(res//2, res//2),
+    #     image=image,
+    #     in_ndc=False, coor_sys='nr')
+
     heads_num, vertex_num, _ = attention.shape
     all_head = np.zeros((vertex_num,vertex_num))
 
     ##### compute avg attention for 4 attention heads
     for h in range(4):
         att_per_img = attention[h]
-        all_head = all_head + att_per_img   
+        all_head = all_head + att_per_img
     all_head = all_head/4
 
     col_sums = all_head.sum(axis=0)
@@ -419,14 +457,14 @@ def visualize_reconstruction_and_att_local(img, img_size, vertices_full, vertice
 
     combined = []
     if vertex_num>400:  # body
-        selected_joints = [7]  # [6,7,4,5,13,12] 
-    else: # hand  
-        selected_joints = [0] # [0, 4, 8, 12, 16, 20] 
+        selected_joints = [7]  # [6,7,4,5,13,12]
+    else: # hand
+        selected_joints = [0] # [0, 4, 8, 12, 16, 20]
     # Draw attention
     for ii in range(len(selected_joints)):
         reference_id = selected_joints[ii]
         ref_point = ref_points[reference_id]
-        attention_to_show = all_head[reference_id][14::] 
+        attention_to_show = all_head[reference_id][14::]
         min_v = np.min(attention_to_show)
         max_v = np.max(attention_to_show)
         norm_attention_to_show = (attention_to_show - min_v)/(max_v-min_v)
@@ -451,7 +489,7 @@ def visualize_reconstruction_and_att_local(img, img_size, vertices_full, vertice
         for jj in range(vertices_norm.shape[0]):
             x = int(vertices_norm[jj,0])
             y = int(vertices_norm[jj,1])
-            cv2.circle(image,(x,y), 1, (255,255,255), -1) 
+            cv2.circle(image,(x,y), 1, (255,255,255), -1)
 
         if len(combined)==0:
             combined = image
@@ -485,8 +523,8 @@ def visualize_reconstruction_no_text(img, img_size, vertices, camera, renderer, 
 def plot_one_line(ref, vertex, img, color_index, alpha=0.0, line_thickness=None):
     # 13,6,7,8,3,4,5
     # att_colors = [(255, 221, 104), (255, 255, 0), (255, 215, 227),  (210, 240, 119), \
-    #          (209, 238, 245), (244, 200, 243),  (233, 242, 216)] 
-    att_colors = [(255, 255, 0), (244, 200, 243),  (210, 243, 119), (209, 238, 255), (200, 208, 255), (250, 238, 215)] 
+    #          (209, 238, 245), (244, 200, 243),  (233, 242, 216)]
+    att_colors = [(255, 255, 0), (244, 200, 243),  (210, 243, 119), (209, 238, 255), (200, 208, 255), (250, 238, 215)]
 
 
     overlay = img.copy()
