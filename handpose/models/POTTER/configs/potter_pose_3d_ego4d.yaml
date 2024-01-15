@@ -1,0 +1,52 @@
+GPUS: '0,1'
+OUTPUT_DIR: 'output'
+LOG_DIR: 'log'
+WORKERS: 4
+TRAIN_PRINT_NUM: 6
+DATASET:
+  DATASET: 'ego4d'
+  ORIGINAL_IMAGE_SIZE:
+  - 512
+  - 512
+MODEL:
+  NAME: 'PoolAttnHRCam_Pose_3D'
+  IMAGE_SIZE:
+  - 224
+  - 224
+  NUM_JOINTS: 21
+  NUM_DECONV_FILTERS:
+  - 256
+  - 256
+  - 256
+  NUM_LAYERS: 34
+  EXTRA:
+    HEATMAP_SIZE:
+    - 56
+    - 56
+    SIGMA: 2
+    DEPTH_DIM: 56
+    LAYERS:
+      - 2
+      - 2
+      - 6
+      - 2
+    EMBED_DIMS:
+      - 64
+      - 128
+      - 320
+      - 512
+    MLP_RATIOS:
+      - 4
+      - 4
+      - 4
+      - 4
+    DROP_RATE: 0.1
+    DROP_PATH_RATE: 0.1
+TEST:
+  BATCH_SIZE: 64
+TRAIN:
+  BATCH_SIZE: 64
+  SHUFFLE: true
+  BEGIN_EPOCH: 0
+  END_EPOCH: 70
+  LR: 0.0001
