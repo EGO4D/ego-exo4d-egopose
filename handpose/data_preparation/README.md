@@ -32,6 +32,31 @@ Four annotation JSON files will be generated:
 - **ego_pose_gt_anno_test_public.json**: includes hand bbox in all annotation available `test` takes. Available to public. 
 - **ego_pose_gt_anno_test_private.json**: includes 3D hand joints coordinates, hand bbox and valid hand joints flag in all annotation available `test` takes. Not available to public, only for server evaluation.
 
+In this step, we filtered valid 3D annotations by biomechanical constraints, and save it in the generated files. We encourage but do not request the users to use it as a data cleanup process.  
+
+The structure of `ego_pose_gt_anno_train_public.json`, `ego_pose_gt_anno_val_public.json` and `ego_pose_gt_anno_test_private.json` is:  
+```
+|-- take_uid: { 
+|---- "frame_number": { 
+|------ "right_hand": a 3 by 21 matrix for 3D annotations for each joint, joint ordering in note.  
+|                     Empty if the hand is invisible, and NaN if the joint is invisible. 
+|------ "right_hand_bbox": a 4 by 1 matrix for hand bounding box with format whwh. 
+|                          Empty if the hand is invisible.  
+|------ "right_hand_valid": a 21 by 1 matrix to show if each joint is valid.
+|                           Empty if the hand is invisible.
+|------ the same entries for left hand ...
+|------ "metadata": some metadata for the take and the frame. } }
+```
+The structure of `ego_pose_gt_anno_test_public.json` is:  
+```
+|-- take_uid: { 
+|---- "frame_number": { 
+|------ "right_hand_bbox": a 4 by 1 matrix for hand bounding box with format whwh. 
+|                          Empty if the hand is invisible and not evaluated.  
+|------ the same entries for left hand ...
+|------ "metadata": some metadata for the take and the frame. } }
+```
+
 A sample of four ground truth annotation files can be found from [here](https://drive.google.com/drive/folders/17TYpJl523r8nzjRB3cBzxbhr2BhM7R8U?usp=sharing).
 
 ### Step 3: Extract & undistort Aria images
