@@ -36,25 +36,36 @@ In this step, we filtered valid 3D annotations by biomechanical constraints, and
 
 The structure of `ego_pose_gt_anno_train_public.json`, `ego_pose_gt_anno_val_public.json` and `ego_pose_gt_anno_test_private.json` is:  
 ```
-|-- take_uid: { 
-|---- "frame_number": { 
-|------ "right_hand": a 3 by 21 matrix for 3D annotations for each joint, joint ordering in note.  
-|                     Empty if the hand is invisible, and NaN if the joint is invisible. 
-|------ "right_hand_bbox": a 4 by 1 matrix for hand bounding box with format whwh. 
-|                          Empty if the hand is invisible.  
-|------ "right_hand_valid": a 21 by 1 matrix to show if each joint is valid.
-|                           Empty if the hand is invisible.
-|------ the same entries for left hand ...
-|------ "metadata": some metadata for the take and the frame. } }
+{
+    <"take_uid"> :{
+        <"frame_number">: {
+            "right_hand_2d": a (21,2) array for 2D annotations for each joint, joint ordering in note. 
+                            Empty if the hand is invisible, and NaN if the joint is invisible. 
+            "right_hand_3d": a (21,3) array for 3D annotations for each joint, joint ordering in note.  
+                            Empty if the hand is invisible, and NaN if the joint is invisible. 
+            "right_hand_bbox": a (4,) array for hand bounding box with format xyxy. 
+                            Empty if the hand is invisible. 
+            "right_hand_valid": a (21,) array to show if each joint is valid.
+                            Empty if the hand is invisible.
+            the same entries for left hand ...
+            "metadata": some metadata for the take and the frame.
+        }
+    }
+}
 ```
 The structure of `ego_pose_gt_anno_test_public.json` is:  
 ```
-|-- take_uid: { 
-|---- "frame_number": { 
-|------ "right_hand_bbox": a 4 by 1 matrix for hand bounding box with format whwh. 
-|                          Empty if the hand is invisible and not evaluated.  
-|------ the same entries for left hand ...
-|------ "metadata": some metadata for the take and the frame. } }
+{
+    <"take_uid">: {
+        <"frame_number">: {
+            "right_hand_bbox": a (4,) array for right hand bounding box with format xyxy. 
+                            Empty if the hand is invisible and not evaluated.  
+            "left_hand_bbox": a (4,) array for left hand bounding box with format xyxy. 
+                            Empty if the hand is invisible and not evaluated.  
+            "metadata": some metadata for the take and the frame.
+        }
+    }
+}
 ```
 
 A sample of four ground truth annotation files can be found from [here](https://drive.google.com/drive/folders/17TYpJl523r8nzjRB3cBzxbhr2BhM7R8U?usp=sharing).
