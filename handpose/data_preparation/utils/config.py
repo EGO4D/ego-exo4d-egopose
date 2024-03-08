@@ -16,9 +16,10 @@ def create_arg_parse():
         "--steps",
         type=str,
         nargs="+",
-        default=["gt_anno", "raw_image", "undistorted_image"],
+        default=["aria_calib", "gt_anno", "raw_image", "undistorted_image"],
         help="""
             Determine which step should be executed in data preparation:
+            - aria_calib: Generate aria calibration JSON file for easier loading
             - gt_anno: Extract ground truth annotation file
             - raw_image: Extract raw ego-view (aria) images
             - undistorted_image: Undistort raw aria images
@@ -62,6 +63,7 @@ def create_arg_parse():
     # Parameter sanity check
     for step in args.steps:
         assert step in [
+            "aria_calib",
             "gt_anno",
             "raw_image",
             "undistorted_image",

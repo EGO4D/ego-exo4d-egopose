@@ -8,7 +8,7 @@ from projectaria_tools.core import calibration
 from utils.utils import (
     aria_original_to_extracted,
     cam_to_img,
-    get_aria_camera_models,
+    get_ego_aria_cam_name,
     get_interested_take,
     HAND_ORDER,
     hand_pad_bbox_from_kpts,
@@ -63,6 +63,7 @@ class ego_pose_anno_loader:
         )
         # Whether use extracted view (Default is False)
         self.extracted_view = args.extracted_view
+        self.aria_calib_dir = os.path.join(args.gt_output_dir, "aria_calib_json")
         # TODO: Modify as needed with updated public egoexo data
         self.split_take_dict = self.init_split()
         self.db = self.load_raw_data()
@@ -243,39 +244,13 @@ class ego_pose_anno_loader:
         return {"train": all_train_uid, "val": all_val_uid, "test": all_test_uid}
 
     def load_aria_calib(self, curr_take_name):
-        # Load aria calibration model
-        capture_name = "_".join(curr_take_name.split("_")[:-1])
         # Find aria names
         take = [t for t in self.takes if t["root_dir"] == curr_take_name]
         take = take[0]
-        ego_cam_names = [
-            x["cam_id"]
-            for x in take["capture"]["cameras"]
-            if str(x["is_ego"]).lower() == "true"
-        ]
-        assert len(ego_cam_names) > 0, "No ego cameras found!"
-        if len(ego_cam_names) > 1:
-            ego_cam_names = [
-                cam
-                for cam in ego_cam_names
-                if cam in take["frame_aligned_videos"].keys()
-            ]
-            assert len(ego_cam_names) > 0, "No frame-aligned ego cameras found!"
-            if len(ego_cam_names) > 1:
-                ego_cam_names_filtered = [
-                    cam for cam in ego_cam_names if "aria" in cam.lower()
-                ]
-                if len(ego_cam_names_filtered) == 1:
-                    ego_cam_names = ego_cam_names_filtered
-            assert (
-                len(ego_cam_names) == 1
-            ), f"Found too many ({len(ego_cam_names)}) ego cameras: {ego_cam_names}"
-        ego_cam_names = ego_cam_names[0]
+        aria_cam_name = get_ego_aria_cam_name(take)
         # Load aria calibration model
-        vrs_path = os.path.join(
-            self.dataset_root, "captures", capture_name, f"videos/{ego_cam_names}.vrs"
-        )
-        aria_rgb_calib = get_aria_camera_models(vrs_path)["214-1"]
+        curr_aria_calib_json_path = os.path.join(self.aria_calib_dir, f"{curr_take_name}.json")
+        aria_rgb_calib = calibration.device_calibration_from_json(curr_aria_calib_json_path).get_camera_calib("camera-rgb")
         dst_cam_calib = calibration.get_linear_camera_calibration(512, 512, 150)
         # Generate mask in undistorted aria view
         mask = np.full((1408, 1408), 255, dtype=np.uint8)
@@ -288,7 +263,7 @@ class ego_pose_anno_loader:
             else undistorted_mask
         )
         undistorted_mask = undistorted_mask / 255
-        return undistorted_mask, ego_cam_names
+        return undistorted_mask, aria_cam_name
 
     def load_frame_hand_2d_3d_kpts(self, frame_anno, aria_cam_name):
         """

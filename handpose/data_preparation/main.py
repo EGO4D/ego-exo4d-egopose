@@ -10,7 +10,7 @@ from projectaria_tools.core import calibration
 from tqdm import tqdm
 from utils.config import create_arg_parse
 from utils.reader import PyAvReader
-from utils.utils import get_aria_camera_models, get_ego_aria_cam_name
+from utils.utils import get_ego_aria_cam_name, extract_aria_calib_to_json
 
 
 def undistort_aria_img(args):
@@ -46,13 +46,9 @@ def undistort_aria_img(args):
                 take = take[0]
                 # Get current take's name and aria camera name
                 take_name = take["root_dir"]
-                ego_aria_cam_name = get_ego_aria_cam_name(take)
                 # Get aria calibration model and pinhole camera model
-                capture_name = "_".join(take_name.split("_")[:-1])
-                vrs_path = os.path.join(
-                    vrs_root, capture_name, f"videos/{ego_aria_cam_name}.vrs"
-                )
-                aria_rgb_calib = get_aria_camera_models(vrs_path)["214-1"]
+                curr_aria_calib_json_path = os.path.join(args.gt_output_dir, "aria_calib_json", f"{take_name}.json")
+                aria_rgb_calib = calibration.device_calibration_from_json(curr_aria_calib_json_path).get_camera_calib("camera-rgb")
                 pinhole = calibration.get_linear_camera_calibration(512, 512, 150)
                 # Input and output directory
                 curr_dist_img_dir = os.path.join(dist_img_root, take_name)
@@ -210,9 +206,51 @@ def create_gt_anno(args):
                 save_test_gt_anno(gt_anno_output_dir, gt_anno.db)
 
 
+def create_aria_calib(args):
+    # TODO: Change when new data is released
+    local_anno_dir = "/mnt/volume2/Data/jinxu/suyog_new_hand_anno/hand/annotation"
+
+    # Create aria calib JSON output directory
+    aria_calib_json_output_dir = os.path.join(args.gt_output_dir, "aria_calib_json")
+    os.makedirs(aria_calib_json_output_dir, exist_ok=True)
+
+    # Find all local annotation takes
+    all_local_take_uids = [k.split(".")[0] for k in os.listdir(local_anno_dir)]
+    # Find uid and take info
+    takes = json.load(open(os.path.join(args.ego4d_data_dir, "takes.json")))
+    take_to_uid = {each_take['root_dir'] : each_take['take_uid'] for each_take in takes if each_take["take_uid"] in all_local_take_uids}
+    assert len(all_local_take_uids) == len(take_to_uid), "Some annotation take doesn't have corresponding info in takes.json"
+    # Export aria calibration to JSON file
+    for take_name, _ in take_to_uid.items():
+        # Get aria name
+        capture_name = "_".join(take_name.split("_")[:-1])
+        take = [t for t in takes if t["root_dir"] == take_name]
+        assert len(take) == 1, f"Take: {take_name} can't be found in takes.json"
+        take = take[0]
+        aria_cam_name = get_ego_aria_cam_name(take)
+        # 1. Generate aria calib JSON file
+        vrs_path = os.path.join(args.ego4d_data_dir, f"captures/{capture_name}/videos/{aria_cam_name}.vrs")
+        assert os.path.exists(vrs_path), f"{vrs_path} doesn't exist. Please make data is downloaded first."
+        output_path = os.path.join(aria_calib_json_output_dir, f"{take_name}.json")
+        extract_aria_calib_to_json(vrs_path, output_path)
+        # 2. Overwrite f, cx, cy parameter from JSON file
+        aria_calib_json = json.load(open(output_path))
+        # Overwrite f, cx, cy
+        all_cam_calib = aria_calib_json["CameraCalibrations"]
+        aria_cam_calib = [c for c in all_cam_calib if c["Label"] == "camera-rgb"][0]
+        aria_cam_calib["Projection"]["Params"][0] /= 2
+        aria_cam_calib["Projection"]["Params"][1] = (aria_cam_calib["Projection"]["Params"][1] - 0.5 - 32)/2
+        aria_cam_calib["Projection"]["Params"][2] = (aria_cam_calib["Projection"]["Params"][2] - 0.5 - 32)/2
+        # Save updated JSON calib file
+        with open(os.path.join(output_path), "w") as f:
+            json.dump(aria_calib_json, f)
+
+
 def main(args):
     for step in args.steps:
-        if step == "gt_anno":
+        if step == "aria_calib":
+            create_aria_calib(args)
+        elif step == "gt_anno":
             create_gt_anno(args)
         elif step == "raw_image":
             extract_aria_img(args)

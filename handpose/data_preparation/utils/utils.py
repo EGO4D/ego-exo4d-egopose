@@ -1,4 +1,5 @@
 import numpy as np
+import subprocess
 
 
 # Customized order when processing each hand's annotation
@@ -314,3 +315,17 @@ def get_ego_aria_cam_name(take):
         ), f"Found too many ({len(ego_cam_names)}) ego cameras: {ego_cam_names}"
     ego_cam_names = ego_cam_names[0]
     return ego_cam_names
+
+
+def extract_aria_calib_to_json(input_vrs, output_path):
+
+    extract_calibration_json_cmd = f"vrs {input_vrs} | grep calib_json"
+
+    p = subprocess.Popen([extract_calibration_json_cmd], shell=True, stdout=subprocess.PIPE)
+    out, err = p.communicate()
+    out = out.decode("utf-8")
+
+    calib_json_string = out[20:-1]
+
+    with open(output_path, "w") as f:
+        f.write(calib_json_string)
