@@ -159,12 +159,9 @@ def world_to_cam(kpts, extri):
     Output:
         new_kpts: (N,3)
     """
-    none_idx = np.any(np.isnan(kpts), axis=1)
     new_kpts = kpts.copy()
-    new_kpts[none_idx] = 0
     new_kpts = np.append(new_kpts, np.ones((new_kpts.shape[0], 1)), axis=1).T  # (4,N)
     new_kpts = (extri @ new_kpts).T  # (N,3)
-    new_kpts[none_idx] = None
     return new_kpts
 
 
@@ -176,13 +173,10 @@ def cam_to_img(kpts, intri):
     Output:
         new_kpts: (N,2)
     """
-    none_idx = np.any(np.isnan(kpts), axis=1)
     new_kpts = kpts.copy()
-    new_kpts[none_idx] = -1
     new_kpts = intri @ new_kpts.T  # (3,N)
     new_kpts = new_kpts / new_kpts[2, :]
     new_kpts = new_kpts[:2, :].T
-    new_kpts[none_idx] = None
     return new_kpts
 
 

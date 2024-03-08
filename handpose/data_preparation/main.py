@@ -20,20 +20,12 @@ def undistort_aria_img(args):
     for anno_type in args.anno_types:
         for split in args.splits:
             # Load GT annotation
-            if split in ["train", "val"]:
-                gt_anno_path = os.path.join(
-                    args.gt_output_dir,
-                    "annotation",
-                    anno_type,
-                    f"ego_pose_gt_anno_{split}.json",
-                )
-            else:
-                gt_anno_path = os.path.join(
-                    args.gt_output_dir,
-                    "annotation",
-                    anno_type,
-                    f"ego_pose_gt_anno_{split}_private.json",
-                )
+            gt_anno_path = os.path.join(
+                args.gt_output_dir,
+                "annotation",
+                anno_type,
+                f"ego_pose_gt_anno_{split}_public.json",
+            )
             assert os.path.exists(
                 gt_anno_path
             ), f"Extraction of aria raw image fails for split={split}. Invalid path: {gt_anno_path}"
@@ -80,19 +72,24 @@ def undistort_aria_img(args):
                         curr_dist_img_path = os.path.join(
                             curr_dist_img_dir, f"{f_idx:06d}.jpg"
                         )
-                        curr_dist_image = np.array(
-                            Image.open(curr_dist_img_path).rotate(90)
+                        curr_dist_image = np.array(Image.open(curr_dist_img_path))
+                        curr_dist_image = (
+                            np.rot90(curr_dist_image)
+                            if args.extracted_view
+                            else curr_dist_image
                         )
                         # Undistortion
                         undistorted_image = calibration.distort_by_calibration(
                             curr_dist_image, pinhole, aria_rgb_calib
                         )
-                        undistorted_image = cv2.rotate(
-                            undistorted_image, cv2.ROTATE_90_CLOCKWISE
-                        )[:, :, ::-1]
+                        undistorted_image = (
+                            cv2.rotate(undistorted_image, cv2.ROTATE_90_CLOCKWISE)
+                            if args.extracted_view
+                            else undistorted_image
+                        )
                         # Save undistorted image
                         assert cv2.imwrite(
-                            curr_undist_img_path, undistorted_image
+                            curr_undist_img_path, undistorted_image[:, :, ::-1]
                         ), curr_undist_img_path
 
 
@@ -103,20 +100,12 @@ def extract_aria_img(args):
     for anno_type in args.anno_types:
         for split in args.splits:
             # Load GT annotation
-            if split in ["train", "val"]:
-                gt_anno_path = os.path.join(
-                    args.gt_output_dir,
-                    "annotation",
-                    anno_type,
-                    f"ego_pose_gt_anno_{split}.json",
-                )
-            else:
-                gt_anno_path = os.path.join(
-                    args.gt_output_dir,
-                    "annotation",
-                    anno_type,
-                    f"ego_pose_gt_anno_{split}_private.json",
-                )
+            gt_anno_path = os.path.join(
+                args.gt_output_dir,
+                "annotation",
+                anno_type,
+                f"ego_pose_gt_anno_{split}_public.json",
+            )
             assert os.path.exists(
                 gt_anno_path
             ), f"Extraction of aria raw image fails for split={split}. Invalid path: {gt_anno_path}"
@@ -161,6 +150,7 @@ def extract_aria_img(args):
                     )
                     if not os.path.exists(out_path):
                         frame = reader[f_idx][0].cpu().numpy()
+                        frame = frame if args.extracted_view else np.rot90(frame)
                         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                         assert cv2.imwrite(out_path, frame), out_path
 
@@ -171,11 +161,18 @@ def save_test_gt_anno(output_dir, gt_anno_private):
         os.path.join(output_dir, f"ego_pose_gt_anno_test_private.json"), "w"
     ) as f:
         json.dump(gt_anno_private, f, indent=4)
-    # 2. Exclude GT 3D joints and valid flag information for public un-annotated test file
+    # 2. Exclude GT 2D & 3D joints and valid flag information for public un-annotated test file
     gt_anno_public = copy.deepcopy(gt_anno_private)
     for _, take_anno in gt_anno_public.items():
         for _, frame_anno in take_anno.items():
-            for k in ["left_hand", "right_hand", "left_hand_valid", "right_hand_valid"]:
+            for k in [
+                "left_hand_2d",
+                "right_hand_2d",
+                "left_hand_3d",
+                "right_hand_3d",
+                "left_hand_valid",
+                "right_hand_valid",
+            ]:
                 frame_anno.pop(k)
     # 3. Save public un-annotated test JSON file
     with open(os.path.join(output_dir, f"ego_pose_gt_anno_test_public.json"), "w") as f:
@@ -202,7 +199,9 @@ def create_gt_anno(args):
             # Save ground truth JSON file
             if split in ["train", "val"]:
                 with open(
-                    os.path.join(gt_anno_output_dir, f"ego_pose_gt_anno_{split}_public.json"),
+                    os.path.join(
+                        gt_anno_output_dir, f"ego_pose_gt_anno_{split}_public.json"
+                    ),
                     "w",
                 ) as f:
                     json.dump(gt_anno.db, f, indent=4)

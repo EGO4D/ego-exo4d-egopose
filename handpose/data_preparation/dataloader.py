@@ -61,6 +61,8 @@ class ego_pose_anno_loader:
                 self.dataset_root, "annotations/egoexo_split_latest_train_val_test.csv"
             )
         )
+        # Whether use extracted view (Default is False)
+        self.extracted_view = args.extracted_view
         # TODO: Modify as needed with updated public egoexo data
         self.split_take_dict = self.init_split()
         self.db = self.load_raw_data()
@@ -126,7 +128,9 @@ class ego_pose_anno_loader:
 
         for frame_idx, curr_frame_anno in anno.items():
             # Load in current frame's 2D & 3D annotation and camera parameter
-            curr_hand_3d_kpts, _ = self.load_frame_hand_3d_kpts(curr_frame_anno)
+            curr_hand_2d_kpts, curr_hand_3d_kpts, _ = self.load_frame_hand_2d_3d_kpts(
+                curr_frame_anno, aria_cam_name
+            )
             curr_intri, curr_extri = self.load_frame_cam_pose(
                 frame_idx, cam_pose, aria_cam_name
             )
@@ -137,10 +141,15 @@ class ego_pose_anno_loader:
             curr_frame_anno = {}
             at_least_one_hands_valid = False
             for hand_idx, hand_name in enumerate(HAND_ORDER):
-                # Get current hand's 3D world kpts
+                # Get current hand's 2D kpts and 3D world kpts
                 start_idx, end_idx = self.num_joints * hand_idx, self.num_joints * (
                     hand_idx + 1
                 )
+                one_hand_2d_kpts = curr_hand_2d_kpts[start_idx:end_idx]
+                if self.extracted_view:
+                    one_hand_2d_kpts = aria_original_to_extracted(
+                        one_hand_2d_kpts, self.undist_img_dim
+                    )
                 one_hand_3d_kpts_world = curr_hand_3d_kpts[start_idx:end_idx]
                 # Skip this hand if the hand wrist (root) is None
                 if np.any(np.isnan(one_hand_3d_kpts_world[0])):
@@ -154,32 +163,41 @@ class ego_pose_anno_loader:
                 # 3D world to camera (original view)
                 one_hand_3d_kpts_cam = world_to_cam(one_hand_3d_kpts_world, curr_extri)
                 # Camera original to original aria image plane
-                one_hand_2d_kpts_original = cam_to_img(one_hand_3d_kpts_cam, curr_intri)
+                one_hand_proj_2d_kpts = cam_to_img(one_hand_3d_kpts_cam, curr_intri)
+                if self.extracted_view:
+                    one_hand_proj_2d_kpts = aria_original_to_extracted(
+                        one_hand_proj_2d_kpts, self.undist_img_dim
+                    )
 
-                # Get filtered 2D kpts in extracted view
-                one_hand_2d_kpts_extracted = aria_original_to_extracted(
-                    one_hand_2d_kpts_original, self.undist_img_dim
-                )
-                one_hand_filtered_2d_kpts, valid_flag = self.one_hand_kpts_valid_check(
-                    one_hand_2d_kpts_extracted, aria_mask
-                )
+                # Filter projected 2D kpts
+                (
+                    one_hand_filtered_proj_2d_kpts,
+                    valid_proj_2d_flag,
+                ) = self.one_hand_kpts_valid_check(one_hand_proj_2d_kpts, aria_mask)
                 # Get filtered 3D kpts in camera original view
                 one_hand_filtered_3d_kpts_cam = one_hand_3d_kpts_cam.copy()
-                one_hand_filtered_3d_kpts_cam[~valid_flag] = None
-                # Get hand bbox based if number of valid hand kpts is above threshold
-                if sum(valid_flag) >= self.valid_kpts_threshold:
+                one_hand_filtered_3d_kpts_cam[~valid_proj_2d_flag] = None
+
+                # Filter 2D annotation kpts
+                one_hand_filtered_anno_2d_kpts, _ = self.one_hand_kpts_valid_check(
+                    one_hand_2d_kpts, aria_mask
+                )
+
+                # Prepare 2d kpts, 3d kpts, bbox and flag data based on number of valid 3D kpts
+                if sum(valid_proj_2d_flag) >= self.valid_kpts_threshold:
                     at_least_one_hands_valid = True
                     # Assign original hand wrist 3d kpts back (needed for offset hand wrist)
                     one_hand_filtered_3d_kpts_cam[0] = one_hand_3d_kpts_cam[0]
                     # Generate hand bbox based on 2D GT kpts
                     if self.split == "test":
                         one_hand_bbox = hand_rand_bbox_from_kpts(
-                            one_hand_filtered_2d_kpts[valid_flag], self.undist_img_dim
+                            one_hand_filtered_proj_2d_kpts[valid_proj_2d_flag],
+                            self.undist_img_dim,
                         )
                     else:
                         # For train and val, generate hand bbox with padding
                         one_hand_bbox = hand_pad_bbox_from_kpts(
-                            one_hand_filtered_2d_kpts[valid_flag],
+                            one_hand_filtered_proj_2d_kpts[valid_proj_2d_flag],
                             self.undist_img_dim,
                             self.bbox_padding,
                         )
@@ -187,14 +205,18 @@ class ego_pose_anno_loader:
                 else:
                     one_hand_bbox = np.array([])
                     one_hand_filtered_3d_kpts_cam = np.array([])
-                    valid_flag = np.array([])
+                    one_hand_filtered_anno_2d_kpts = np.array([])
+                    valid_proj_2d_flag = np.array([])
 
                 # Compose current hand GT info in current frame
                 curr_frame_anno[
-                    f"{hand_name}_hand"
+                    f"{hand_name}_hand_3d"
                 ] = one_hand_filtered_3d_kpts_cam.tolist()
+                curr_frame_anno[
+                    f"{hand_name}_hand_2d"
+                ] = one_hand_filtered_anno_2d_kpts.tolist()
                 curr_frame_anno[f"{hand_name}_hand_bbox"] = one_hand_bbox.tolist()
-                curr_frame_anno[f"{hand_name}_hand_valid"] = valid_flag.tolist()
+                curr_frame_anno[f"{hand_name}_hand_valid"] = valid_proj_2d_flag.tolist()
 
             # Append current frame into GT JSON if at least one valid hand exists
             if at_least_one_hands_valid:
@@ -260,13 +282,23 @@ class ego_pose_anno_loader:
         undistorted_mask = calibration.distort_by_calibration(
             mask, dst_cam_calib, aria_rgb_calib
         )
-        undistorted_mask = cv2.rotate(undistorted_mask, cv2.ROTATE_90_CLOCKWISE)
+        undistorted_mask = (
+            cv2.rotate(undistorted_mask, cv2.ROTATE_90_CLOCKWISE)
+            if self.extracted_view
+            else undistorted_mask
+        )
         undistorted_mask = undistorted_mask / 255
         return undistorted_mask, ego_cam_names
 
-    def load_frame_hand_3d_kpts(self, frame_anno):
+    def load_frame_hand_2d_3d_kpts(self, frame_anno, aria_cam_name):
         """
-        Return GT 3D hand kpts in world frame & number of views for each joint
+        Input:
+            frame_anno: annotation for current frame
+            aria_cam_name: aria camera name
+        Output:
+            curr_frame_2d_kpts: (42,2) 2D hand keypoints in original frame
+            curr_frame_3d_kpts: (42,3) 3D hand keypoints in world coordinate system
+            joints_view_stat: (42,) Number of triangulation views for each 3D hand keypoints
         """
         # Finger dict to load annotation
         finger_dict = {
@@ -278,24 +310,88 @@ class ego_pose_anno_loader:
             "pinky": [1, 2, 3, 4],
         }
 
-        # Check if annotation data exists
-        if frame_anno is None or "annotation3D" not in frame_anno[0].keys():
-            return None, None
+        ### Load 2D GT hand kpts ###
+        # Return NaN if no annotation exists
+        if (
+            "annotation2D" not in frame_anno[0].keys()
+            or aria_cam_name not in frame_anno[0]["annotation2D"].keys()
+            or len(frame_anno[0]["annotation2D"][aria_cam_name]) == 0
+        ):
+            curr_frame_2d_kpts = [[None, None] for _ in range(42)]
+        else:
+            curr_frame_2d_anno = frame_anno[0]["annotation2D"][aria_cam_name]
+            curr_frame_2d_kpts = []
+            # Load 3D annotation for both hands
+            for hand in HAND_ORDER:
+                for finger, finger_joint_order in finger_dict.items():
+                    if finger_joint_order:
+                        for finger_joint_idx in finger_joint_order:
+                            finger_k_json = f"{hand}_{finger}_{finger_joint_idx}"
+                            # Load 3D if exist annotation, and check for minimum number of visible views
+                            if finger_k_json in curr_frame_2d_anno.keys():
+                                curr_frame_2d_kpts.append(
+                                    [
+                                        curr_frame_2d_anno[finger_k_json]["x"],
+                                        curr_frame_2d_anno[finger_k_json]["y"],
+                                    ]
+                                )
+                            else:
+                                curr_frame_2d_kpts.append([None, None])
+                    else:
+                        finger_k_json = f"{hand}_{finger}"
+                        # Load 3D if exist annotation, and check for minimum number of visible views
+                        if finger_k_json in curr_frame_2d_anno.keys():
+                            curr_frame_2d_kpts.append(
+                                [
+                                    curr_frame_2d_anno[finger_k_json]["x"],
+                                    curr_frame_2d_anno[finger_k_json]["y"],
+                                ]
+                            )
+                        else:
+                            curr_frame_2d_kpts.append([None, None])
 
-        curr_frame_3d_anno = frame_anno[0]["annotation3D"]
-        curr_frame_3d_kpts = []
-        joints_view_stat = []
-
-        # Check if aria 3D annotation is non-empty
-        if len(curr_frame_3d_anno) == 0:
-            return None, None
-
-        # Load 3D annotation for both hands
-        for hand in HAND_ORDER:
-            for finger, finger_joint_order in finger_dict.items():
-                if finger_joint_order:
-                    for finger_joint_idx in finger_joint_order:
-                        finger_k_json = f"{hand}_{finger}_{finger_joint_idx}"
+        ### Load 3D GT hand kpts ###
+        # Return NaN if no annotation exists
+        if (
+            "annotation3D" not in frame_anno[0].keys()
+            or len(frame_anno[0]["annotation3D"]) == 0
+        ):
+            return None, None, None
+        else:
+            curr_frame_3d_anno = frame_anno[0]["annotation3D"]
+            curr_frame_3d_kpts = []
+            joints_view_stat = []
+            # Load 3D annotation for both hands
+            for hand in HAND_ORDER:
+                for finger, finger_joint_order in finger_dict.items():
+                    if finger_joint_order:
+                        for finger_joint_idx in finger_joint_order:
+                            finger_k_json = f"{hand}_{finger}_{finger_joint_idx}"
+                            # Load 3D if exist annotation, and check for minimum number of visible views
+                            if (
+                                finger_k_json in curr_frame_3d_anno.keys()
+                                and curr_frame_3d_anno[finger_k_json][
+                                    "num_views_for_3d"
+                                ]
+                                >= 3
+                            ):
+                                curr_frame_3d_kpts.append(
+                                    [
+                                        curr_frame_3d_anno[finger_k_json]["x"],
+                                        curr_frame_3d_anno[finger_k_json]["y"],
+                                        curr_frame_3d_anno[finger_k_json]["z"],
+                                    ]
+                                )
+                                joints_view_stat.append(
+                                    curr_frame_3d_anno[finger_k_json][
+                                        "num_views_for_3d"
+                                    ]
+                                )
+                            else:
+                                curr_frame_3d_kpts.append([None, None, None])
+                                joints_view_stat.append(None)
+                    else:
+                        finger_k_json = f"{hand}_{finger}"
                         # Load 3D if exist annotation, and check for minimum number of visible views
                         if (
                             finger_k_json in curr_frame_3d_anno.keys()
@@ -315,44 +411,28 @@ class ego_pose_anno_loader:
                         else:
                             curr_frame_3d_kpts.append([None, None, None])
                             joints_view_stat.append(None)
-                else:
-                    finger_k_json = f"{hand}_{finger}"
-                    # Load 3D if exist annotation, and check for minimum number of visible views
-                    if (
-                        finger_k_json in curr_frame_3d_anno.keys()
-                        and curr_frame_3d_anno[finger_k_json]["num_views_for_3d"] >= 3
-                    ):
-                        curr_frame_3d_kpts.append(
-                            [
-                                curr_frame_3d_anno[finger_k_json]["x"],
-                                curr_frame_3d_anno[finger_k_json]["y"],
-                                curr_frame_3d_anno[finger_k_json]["z"],
-                            ]
-                        )
-                        joints_view_stat.append(
-                            curr_frame_3d_anno[finger_k_json]["num_views_for_3d"]
-                        )
-                    else:
-                        curr_frame_3d_kpts.append([None, None, None])
-                        joints_view_stat.append(None)
-        return np.array(curr_frame_3d_kpts).astype(np.float32), np.array(
-            joints_view_stat
-        ).astype(np.float32)
+        return (
+            np.array(curr_frame_2d_kpts).astype(np.float32),
+            np.array(curr_frame_3d_kpts).astype(np.float32),
+            np.array(joints_view_stat).astype(np.float32),
+        )
 
     def load_frame_cam_pose(self, frame_idx, cam_pose, aria_cam_name):
         # Check if current frame has corresponding camera pose
         if (
-            frame_idx not in cam_pose.keys()
-            or aria_cam_name not in cam_pose[frame_idx].keys()
+            aria_cam_name not in cam_pose.keys()
+            or "camera_intrinsics" not in cam_pose[aria_cam_name].keys()
+            or "camera_extrinsics" not in cam_pose[aria_cam_name].keys()
+            or frame_idx not in cam_pose[aria_cam_name]["camera_extrinsics"].keys()
         ):
             return None, None
         # Build camera projection matrix
         curr_cam_intrinsic = np.array(
-            cam_pose[frame_idx][aria_cam_name]["camera_intrinsics"]
-        )
+            cam_pose[aria_cam_name]["camera_intrinsics"]
+        ).astype(np.float32)
         curr_cam_extrinsics = np.array(
-            cam_pose[frame_idx][aria_cam_name]["camera_extrinsics"]
-        )
+            cam_pose[aria_cam_name]["camera_extrinsics"][frame_idx]
+        ).astype(np.float32)
         return curr_cam_intrinsic, curr_cam_extrinsics
 
     def one_hand_kpts_valid_check(self, kpts, aria_mask):

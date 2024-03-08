@@ -47,6 +47,11 @@ def create_arg_parse():
         help="Directory to store preprocessed ground truth annotation JSON file",
         required=True,
     )
+    parser.add_argument(
+        "--extracted_view",
+        action="store_true",
+        help="whether hand keypoints and images stay in extracted view (normal FPV)"
+    )
 
     # Threshold and parameters in dataloader
     parser.add_argument("--valid_kpts_num_thresh", type=int, default=10)
