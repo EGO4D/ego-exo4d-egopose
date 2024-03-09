@@ -229,7 +229,7 @@ def create_aria_calib(args):
         take = take[0]
         aria_cam_name = get_ego_aria_cam_name(take)
         # 1. Generate aria calib JSON file
-        vrs_path = os.path.join(args.ego4d_data_dir, f"captures/{capture_name}/videos/{aria_cam_name}.vrs")
+        vrs_path = os.path.join(args.ego4d_data_dir, "takes", take_name, f"{aria_cam_name}.vrs")
         assert os.path.exists(vrs_path), f"{vrs_path} doesn't exist. Please make data is downloaded first."
         output_path = os.path.join(aria_calib_json_output_dir, f"{take_name}.json")
         extract_aria_calib_to_json(vrs_path, output_path)

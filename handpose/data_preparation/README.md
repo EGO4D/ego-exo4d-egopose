@@ -1,19 +1,55 @@
 # Hand Ego Pose Data Preparation
-Data preparation for hand ego-pose benchmark task in [Ego4D](https://github.com/facebookresearch/Ego4d/tree/main), [paper](https://arxiv.org/abs/2311.18259). See below with instructions on how to get undistorted ego view (aria) images.
+Data preparation for hand ego-pose benchmark task in [Ego-Exo4D](https://github.com/facebookresearch/Ego4d/tree/main), [paper](https://arxiv.org/abs/2311.18259).
 
-## Instruction
+## Getting Started
+Follow instruction below to first install necessary packages, and then follow step 0 to step 3 to generate the hand ego pose data, including undisorted Aria images and corresponding 2D & 3D hand pose annotaton JSON files. 
 
-### Step 0: Download Ego4D data
-Follow [instructions](https://github.com/facebookresearch/Ego4d/tree/main?tab=readme-ov-file#setup) to set up Ego4D downloader CLI. Then download `annotation`, `metadata` `capture_raw_vrs` and `takes`:
+### Set up
+Run command below to install necessary packages.
 ```
-egoexo -o <ego4d-out-dir> --parts annotations metadata capture_raw_vrs takes
-```
-
-### Step 1: Set-up environment
-```
-conda create -n ego_hand_pose_data python=3.9.16 -y
-conda activate ego_hand_pose_data
 pip install -r requirement.txt
+```
+
+### Step 0: Download Ego-Exo4D data
+To prepare the data needed for hand ego pose estimation, you need to first download the data via [Ego-Exo4D Downloader](https://docs.ego-exo4d-data.org/download/) including `annotations`, `metadata`, frame aligned videos and VRS files. 
+
+First, run command below to download ego pose related `annotations` and `metadata`:
+
+```
+egoexo -o <ego4d-out-dir> --parts annotations metadata --benchmarks egopose
+```
+
+Then, run command below to download frame aligned videos for only annotated takes:
+
+```
+python3 scripts/download.py \
+    --output_dir <ego4d-out-dir> \
+    --parts takes
+```
+
+Finally, for VRS files (which is needed to generate aria calibration JSON file), you can either choose to follow option 1: download `take_vrs` or option 2: skip `take_vrs` download and get pre-generated aria calibration JSON file.
+
+*NOTE: If you choose to followw option 2, please check if the the calibration file exists for every take as this list might not be up-to-date.*
+
+#### Option 1: Download `take_vrs`
+Run command below to download `take_vrs` for all annotated takes:
+```
+python3 scripts/download.py \
+    --output_dir <ego4d-out-dir> \
+    --parts take_vrs
+```
+
+#### Option 2: Download Aria calibration JSON file
+Download pre-generated Aria calibration file from [here](https://drive.google.com/drive/folders/1qPAzPbRdx65-UhIWGoFUGPrgM4JLpwUO?usp=sharing) and put it under `<gt-output-dir>/aria_calib_json/`, where `<gt-output-dir>` is hand ego pose data preparation output directory.
+
+
+### Step 1: Generate Aria calibration JSON file
+If you follow option 1 in downloading VRS file, run command below to generate Aria calibration JSON files which will be used later for Aria image undistortion. If you follow option 2, you may skip this step.
+```
+python3 main.py \
+    --steps aria_calib
+    --ego4d_data_dir <ego4d-out-dir> \
+    --gt_output_dir <gt-output-dir>
 ```
 
 ### Step 2: Generate ground-truth annotation JSON file 
@@ -71,7 +107,7 @@ The structure of `ego_pose_gt_anno_test_public.json` is:
 A sample of four ground truth annotation files can be found from [here](https://drive.google.com/drive/folders/17TYpJl523r8nzjRB3cBzxbhr2BhM7R8U?usp=sharing).
 
 ### Step 3: Extract & undistort Aria images
-Run `main.py` with `steps=raw_image undistorted_image` to first extract Aria raw images to `gt_output_dir`, then perform undistortion to get undistorted Aria images. Default is to extract and undistort all manually annotated frames used in all splits (`train/val/test`).
+Run `main.py` with `steps=raw_image undistorted_image` to first extract Aria raw images to `<gt-output-dir>`, then perform undistortion to get undistorted Aria images. Default is to extract and undistort all manually annotated frames used in all splits (`train/val/test`).
 ```
 python3 main.py \
     --steps raw_image undistorted_image \
