@@ -28,7 +28,7 @@ def create_arg_parse():
 def main(args):
     # TODO: Confirm about directory to be used to find all locally available takes
     # Get all annotated takes
-    local_anno_take_dir = os.path.join(args.output_dir, "annotations/hand/annotation")
+    local_anno_take_dir = os.path.join(args.output_dir, "annotations/ego_pose/hand/annotation")
     all_local_take_uids = [k.split(".")[0] for k in os.listdir(local_anno_take_dir)]
     assert len(all_local_take_uids) > 0, "No takes find."
     cmd_uids = " ".join(all_local_take_uids)
