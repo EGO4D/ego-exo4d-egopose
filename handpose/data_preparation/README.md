@@ -121,7 +121,7 @@ python3 main.py \
     --ego4d_data_dir <ego4d-out-dir> \
     --gt_output_dir <gt-output-dir>
 ```
-comment: some take videos are not present duw to previous inconsistency
+comment: some take videos are not present duw to previous inconsistency  
 comment: need to double-check with the undistortion orientation  
 comment: need to explain the orientation somewhere  
 comment: need a visualization code here  
