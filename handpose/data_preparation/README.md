@@ -30,7 +30,7 @@ python3 scripts/download.py \
 ```
 
 Finally, for VRS files (which is needed to generate aria calibration JSON file), you can either choose to follow option 1: download `take_vrs` or option 2: skip `take_vrs` download and get pre-generated aria calibration JSON file.  
-comment: for 333 takes with the annotations, only 184 take videos are downloaded?
+Updated comments: can find 300 takes, still short of 33 takes.  need to check with Suyog. 
 
 *NOTE: If you choose to followw option 2, please check if the the calibration file exists for every take as this list might not be up-to-date.*
 
@@ -56,8 +56,8 @@ python3 main.py \
     --gt_output_dir <gt-output-dir>
 ```
 comment: TODO: double check for the data folder of hand annotations  
-comment: from downloading the metadata, it is actually splits.json, not egoexo_split_latest_train_val_test.csv?  
-comment: we need to hide the test_private after the data is publicly released. 
+Updated comment: need to check with Suyog if the format changed (from egoexo_split_latest_train_val_test.csv to splits.json).  
+Updated comment: hide test public and test private to users. Users need to download test public from google drive. 
 
 ### Step 2: Generate ground-truth annotation JSON file 
 Run `main.py` with `steps=gt_anno` to generate ground truth annotation file. Default is to create ground truth annotation JSON file for manually annotated data in all splits (`train/val/test`).
@@ -74,6 +74,7 @@ Four annotation JSON files will be generated:
 - **ego_pose_gt_anno_val_public.json**: includes 3D hand joints coordinates, hand bbox and valid hand joints flag in all annotation available `val` takes. Available to public. 
 - **ego_pose_gt_anno_test_public.json**: includes hand bbox in all annotation available `test` takes. Available to public. 
 - **ego_pose_gt_anno_test_private.json**: includes 3D hand joints coordinates, hand bbox and valid hand joints flag in all annotation available `test` takes. Not available to public, only for server evaluation.
+
 
 In this step, we filtered valid 3D annotations by biomechanical constraints, and save it in the generated files. We encourage but do not request the users to use it as a data cleanup process.  
 
@@ -121,8 +122,7 @@ python3 main.py \
     --ego4d_data_dir <ego4d-out-dir> \
     --gt_output_dir <gt-output-dir>
 ```
-comment: some take videos are not present duw to previous inconsistency  
-comment: need to double-check with the undistortion orientation  
+comment: some take videos are not present due to previous inconsistency  
 comment: need to explain the orientation somewhere  
 comment: need a visualization code here  
 comment: need a script for to rotate the image and the annotations (2D+3D) to the regular orientation
