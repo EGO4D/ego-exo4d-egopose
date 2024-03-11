@@ -3,7 +3,7 @@ Data preparation for hand ego-pose benchmark task in [Ego-Exo4D](https://github.
 
 ## Getting Started
 Follow instruction below to first install necessary packages, and then follow step 0 to step 3 to generate the hand ego pose data, including undisorted Aria images and corresponding 2D & 3D hand pose annotaton JSON files.  
-A general comment: list the path used (<ego4d-out-dir>, <gt-output-dir>) here and explain a bit. 
+A general comment: list the path used (ego4d-out-dir, gt-output-dir) here and explain a bit. 
 
 ### Set up
 Run command below to install necessary packages.
