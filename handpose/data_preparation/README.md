@@ -55,8 +55,8 @@ python3 main.py \
     --ego4d_data_dir <ego4d-out-dir> \
     --gt_output_dir <gt-output-dir>
 ```
-comment: TODO: double check for the data folder of hand annotations
-comment: from downloading the metadata, it is actually splits.json, not egoexo_split_latest_train_val_test.csv?
+comment: TODO: double check for the data folder of hand annotations  
+comment: from downloading the metadata, it is actually splits.json, not egoexo_split_latest_train_val_test.csv?  
 comment: we need to hide the test_private after the data is publicly released. 
 
 ### Step 2: Generate ground-truth annotation JSON file 
