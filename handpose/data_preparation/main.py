@@ -68,6 +68,9 @@ def undistort_aria_img(args):
                         curr_dist_img_path = os.path.join(
                             curr_dist_img_dir, f"{f_idx:06d}.jpg"
                         )
+                        if not os.path.exists(curr_dist_img_path):
+                            print('no image: {}'.format(curr_dist_img_path))
+                            continue
                         curr_dist_image = np.array(Image.open(curr_dist_img_path))
                         curr_dist_image = (
                             np.rot90(curr_dist_image)
@@ -130,6 +133,9 @@ def extract_aria_img(args):
                 )
                 curr_take_img_output_path = os.path.join(img_output_root, take_name)
                 os.makedirs(curr_take_img_output_path, exist_ok=True)
+                if not os.path.exists(curr_take_video_path):
+                    print('No video file for {}'.format(curr_take_video_path))
+                    continue
                 reader = PyAvReader(
                     path=curr_take_video_path,
                     resize=None,
