@@ -103,17 +103,18 @@ class ego_pose_anno_loader:
             # Get valid takes info for all frames
             if len(curr_take_anno) > 0:
                 aria_mask, aria_cam_name = self.load_aria_calib(curr_take_name)
-                curr_take_data = self.load_take_raw_data(
-                    curr_take_name,
-                    curr_take_uid,
-                    curr_take_anno,
-                    curr_take_cam_pose,
-                    aria_cam_name,
-                    aria_mask,
-                )
-                # Append into dataset if has at least valid annotation
-                if len(curr_take_data) > 0:
-                    gt_db[curr_take_uid] = curr_take_data
+                if aria_mask is not None:
+                    curr_take_data = self.load_take_raw_data(
+                        curr_take_name,
+                        curr_take_uid,
+                        curr_take_anno,
+                        curr_take_cam_pose,
+                        aria_cam_name,
+                        aria_mask,
+                    )
+                    # Append into dataset if has at least valid annotation
+                    if len(curr_take_data) > 0:
+                        gt_db[curr_take_uid] = curr_take_data
         return gt_db
 
     def load_take_raw_data(
@@ -250,6 +251,9 @@ class ego_pose_anno_loader:
         aria_cam_name = get_ego_aria_cam_name(take)
         # Load aria calibration model
         curr_aria_calib_json_path = os.path.join(self.aria_calib_dir, f"{curr_take_name}.json")
+        if not os.path.exists(curr_aria_calib_json_path):
+            print(f"[Warning] No Aria calibration JSON file found at {curr_aria_calib_json_path}. Skipped this take.")
+            return None, None
         aria_rgb_calib = calibration.device_calibration_from_json(curr_aria_calib_json_path).get_camera_calib("camera-rgb")
         dst_cam_calib = calibration.get_linear_camera_calibration(512, 512, 150)
         # Generate mask in undistorted aria view
