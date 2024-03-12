@@ -161,11 +161,17 @@ class ego4dDataset(Dataset):
             all_frame_anno = []
             for _, curr_take_anno in gt_anno.items():
                 for _, curr_f_anno in curr_take_anno.items():
+                    # check image existence
+                    image_path = os.path.join(self.img_dir,
+                                              curr_f_anno['metadata']['take_name'],
+                                              '{:06d}.jpg'.format(curr_f_anno['metadata']['frame_number']))
+                    if not os.path.exists(image_path):
+                        continue
                     for hand_order in ["right", "left"]:
                         single_hand_anno = {}
-                        if len(curr_f_anno[f"{hand_order}_hand"]) != 0:
+                        if len(curr_f_anno[f"{hand_order}_hand_3d"]) != 0:
                             single_hand_anno["joints_3d"] = np.array(
-                                curr_f_anno[f"{hand_order}_hand"]
+                                curr_f_anno[f"{hand_order}_hand_3d"]
                             )
                             single_hand_anno["valid_flag"] = np.array(
                                 curr_f_anno[f"{hand_order}_hand_valid"]

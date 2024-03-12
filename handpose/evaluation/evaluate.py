@@ -99,10 +99,10 @@ def main(args):
         for frame_number, curr_frame_gt_anno in take_anno.items():
             for hand_order in ["right", "left"]:
                 # Only evaluate valid GT hand
-                if len(curr_frame_gt_anno[f"{hand_order}_hand"]) != 0:
+                if len(curr_frame_gt_anno[f"{hand_order}_hand_3d"]) != 0:
                     # Get GT 3D hand joints
                     gt_3d_kpts = (
-                        np.array(curr_frame_gt_anno[f"{hand_order}_hand"]) * 1000
+                        np.array(curr_frame_gt_anno[f"{hand_order}_hand_3d"]) * 1000
                     )
                     # Get 3D hand joints prediction
                     curr_frame_pred = (
