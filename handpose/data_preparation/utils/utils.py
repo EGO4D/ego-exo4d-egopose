@@ -1,5 +1,6 @@
-import numpy as np
 import subprocess
+
+import numpy as np
 
 
 # Customized order when processing each hand's annotation
@@ -54,12 +55,11 @@ def get_aria_camera_models(aria_path):
     }
 
 
-def aria_original_to_extracted(kpts, img_shape=(1408, 1408)):
+def aria_landscape_to_portrait(kpts, img_shape=(1408, 1408)):
     """
-    Rotate kpts coordinates from original view (hand horizontal) to extracted view (hand vertical)
-    img_shape is the shape of original view image
+    Rotate kpts coordinates from landscape view to portrait view
+    img_shape is the shape of landscape image
     """
-    # assert len(kpts.shape) == 2, "Only can rotate 2D arrays"
     H, _ = img_shape
     none_idx = np.any(np.isnan(kpts), axis=1)
     new_kpts = kpts.copy()
@@ -321,7 +321,9 @@ def extract_aria_calib_to_json(input_vrs, output_path):
 
     extract_calibration_json_cmd = f"vrs {input_vrs} | grep calib_json"
 
-    p = subprocess.Popen([extract_calibration_json_cmd], shell=True, stdout=subprocess.PIPE)
+    p = subprocess.Popen(
+        [extract_calibration_json_cmd], shell=True, stdout=subprocess.PIPE
+    )
     out, err = p.communicate()
     out = out.decode("utf-8")
 

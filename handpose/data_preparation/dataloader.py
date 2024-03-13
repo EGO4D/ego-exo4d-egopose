@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from projectaria_tools.core import calibration
 from utils.utils import (
-    aria_original_to_extracted,
+    aria_landscape_to_portrait,
     cam_to_img,
     get_ego_aria_cam_name,
     get_interested_take,
@@ -61,8 +61,8 @@ class ego_pose_anno_loader:
                 self.dataset_root, "annotations/egoexo_split_latest_train_val_test.csv"
             )
         )
-        # Whether use extracted view (Default is False)
-        self.extracted_view = args.extracted_view
+        # Whether use portrait view (Default is to use landscape view)
+        self.portrait_view = args.portrait_view
         self.aria_calib_dir = os.path.join(args.gt_output_dir, "aria_calib_json")
         # TODO: Modify as needed with updated public egoexo data
         self.split_take_dict = self.init_split()
@@ -148,8 +148,8 @@ class ego_pose_anno_loader:
                     hand_idx + 1
                 )
                 one_hand_2d_kpts = curr_hand_2d_kpts[start_idx:end_idx]
-                if self.extracted_view:
-                    one_hand_2d_kpts = aria_original_to_extracted(
+                if self.portrait_view:
+                    one_hand_2d_kpts = aria_landscape_to_portrait(
                         one_hand_2d_kpts, self.undist_img_dim
                     )
                 one_hand_3d_kpts_world = curr_hand_3d_kpts[start_idx:end_idx]
@@ -166,8 +166,8 @@ class ego_pose_anno_loader:
                 one_hand_3d_kpts_cam = world_to_cam(one_hand_3d_kpts_world, curr_extri)
                 # Camera original to original aria image plane
                 one_hand_proj_2d_kpts = cam_to_img(one_hand_3d_kpts_cam, curr_intri)
-                if self.extracted_view:
-                    one_hand_proj_2d_kpts = aria_original_to_extracted(
+                if self.portrait_view:
+                    one_hand_proj_2d_kpts = aria_landscape_to_portrait(
                         one_hand_proj_2d_kpts, self.undist_img_dim
                     )
 
@@ -218,7 +218,9 @@ class ego_pose_anno_loader:
                     f"{hand_name}_hand_2d"
                 ] = one_hand_filtered_anno_2d_kpts.tolist()
                 curr_frame_anno[f"{hand_name}_hand_bbox"] = one_hand_bbox.tolist()
-                curr_frame_anno[f"{hand_name}_hand_valid"] = valid_proj_2d_flag.tolist()
+                curr_frame_anno[
+                    f"{hand_name}_hand_valid_3d"
+                ] = valid_proj_2d_flag.tolist()
 
             # Append current frame into GT JSON if at least one valid hand exists
             if at_least_one_hands_valid:
@@ -250,11 +252,17 @@ class ego_pose_anno_loader:
         take = take[0]
         aria_cam_name = get_ego_aria_cam_name(take)
         # Load aria calibration model
-        curr_aria_calib_json_path = os.path.join(self.aria_calib_dir, f"{curr_take_name}.json")
+        curr_aria_calib_json_path = os.path.join(
+            self.aria_calib_dir, f"{curr_take_name}.json"
+        )
         if not os.path.exists(curr_aria_calib_json_path):
-            print(f"[Warning] No Aria calibration JSON file found at {curr_aria_calib_json_path}. Skipped this take.")
+            print(
+                f"[Warning] No Aria calibration JSON file found at {curr_aria_calib_json_path}. Skipped this take."
+            )
             return None, None
-        aria_rgb_calib = calibration.device_calibration_from_json(curr_aria_calib_json_path).get_camera_calib("camera-rgb")
+        aria_rgb_calib = calibration.device_calibration_from_json(
+            curr_aria_calib_json_path
+        ).get_camera_calib("camera-rgb")
         dst_cam_calib = calibration.get_linear_camera_calibration(512, 512, 150)
         # Generate mask in undistorted aria view
         mask = np.full((1408, 1408), 255, dtype=np.uint8)
@@ -263,7 +271,7 @@ class ego_pose_anno_loader:
         )
         undistorted_mask = (
             cv2.rotate(undistorted_mask, cv2.ROTATE_90_CLOCKWISE)
-            if self.extracted_view
+            if self.portrait_view
             else undistorted_mask
         )
         undistorted_mask = undistorted_mask / 255

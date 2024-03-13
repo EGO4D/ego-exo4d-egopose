@@ -4,19 +4,21 @@ import sys
 
 
 def create_arg_parse():
-    parser = argparse.ArgumentParser("Download ego hand pose data for only annotated takes via EgoExo4D Downloader")
+    parser = argparse.ArgumentParser(
+        "Download ego hand pose data for only annotated takes via EgoExo4D Downloader"
+    )
     parser.add_argument(
         "--output_dir",
         default=None,
         required=True,
-        help="Root directory of downloaded EgoExo-4D anntations <ego4d_data_dir>"
+        help="Root directory of downloaded EgoExo-4D anntations <ego4d_data_dir>",
     )
     parser.add_argument(
         "--parts",
         type=str,
         nargs="+",
         default=[],
-        help="download filtered takes or take_vrs"
+        help="download filtered takes or take_vrs",
     )
     args = parser.parse_args()
     # Can only filter takes and take_vrs for now
@@ -28,7 +30,9 @@ def create_arg_parse():
 def main(args):
     # TODO: Confirm about directory to be used to find all locally available takes
     # Get all annotated takes
-    local_anno_take_dir = os.path.join(args.output_dir, "annotations/ego_pose/hand/annotation")
+    local_anno_take_dir = os.path.join(
+        args.output_dir, "annotations/ego_pose/hand/annotation"
+    )
     all_local_take_uids = [k.split(".")[0] for k in os.listdir(local_anno_take_dir)]
     assert len(all_local_take_uids) > 0, "No takes find."
     cmd_uids = " ".join(all_local_take_uids)

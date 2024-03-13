@@ -10,7 +10,7 @@ from projectaria_tools.core import calibration
 from tqdm import tqdm
 from utils.config import create_arg_parse
 from utils.reader import PyAvReader
-from utils.utils import get_ego_aria_cam_name, extract_aria_calib_to_json
+from utils.utils import extract_aria_calib_to_json, get_ego_aria_cam_name
 
 
 def undistort_aria_img(args):
@@ -47,8 +47,12 @@ def undistort_aria_img(args):
                 # Get current take's name and aria camera name
                 take_name = take["root_dir"]
                 # Get aria calibration model and pinhole camera model
-                curr_aria_calib_json_path = os.path.join(args.gt_output_dir, "aria_calib_json", f"{take_name}.json")
-                aria_rgb_calib = calibration.device_calibration_from_json(curr_aria_calib_json_path).get_camera_calib("camera-rgb")
+                curr_aria_calib_json_path = os.path.join(
+                    args.gt_output_dir, "aria_calib_json", f"{take_name}.json"
+                )
+                aria_rgb_calib = calibration.device_calibration_from_json(
+                    curr_aria_calib_json_path
+                ).get_camera_calib("camera-rgb")
                 pinhole = calibration.get_linear_camera_calibration(512, 512, 150)
                 # Input and output directory
                 curr_dist_img_dir = os.path.join(dist_img_root, take_name)
@@ -69,12 +73,14 @@ def undistort_aria_img(args):
                             curr_dist_img_dir, f"{f_idx:06d}.jpg"
                         )
                         if not os.path.exists(curr_dist_img_path):
-                            print(f"[Warning] No distorted images found at {curr_dist_img_path}. Skipped take {take_name} - frame_number={frame_number}")
+                            print(
+                                f"[Warning] No distorted images found at {curr_dist_img_path}. Skipped take {take_name} - frame_number={frame_number}"
+                            )
                             continue
                         curr_dist_image = np.array(Image.open(curr_dist_img_path))
                         curr_dist_image = (
                             np.rot90(curr_dist_image)
-                            if args.extracted_view
+                            if args.portrait_view
                             else curr_dist_image
                         )
                         # Undistortion
@@ -83,7 +89,7 @@ def undistort_aria_img(args):
                         )
                         undistorted_image = (
                             cv2.rotate(undistorted_image, cv2.ROTATE_90_CLOCKWISE)
-                            if args.extracted_view
+                            if args.portrait_view
                             else undistorted_image
                         )
                         # Save undistorted image
@@ -132,7 +138,9 @@ def extract_aria_img(args):
                     f"{ego_aria_cam_name}_214-1.mp4",
                 )
                 if not os.path.exists(curr_take_video_path):
-                    print(f"[Warning] No frame aligned videos found at {curr_take_video_path}. Skipped take {take_name}.")
+                    print(
+                        f"[Warning] No frame aligned videos found at {curr_take_video_path}. Skipped take {take_name}."
+                    )
                     continue
                 curr_take_img_output_path = os.path.join(img_output_root, take_name)
                 os.makedirs(curr_take_img_output_path, exist_ok=True)
@@ -152,7 +160,7 @@ def extract_aria_img(args):
                     )
                     if not os.path.exists(out_path):
                         frame = reader[f_idx][0].cpu().numpy()
-                        frame = frame if args.extracted_view else np.rot90(frame)
+                        frame = frame if args.portrait_view else np.rot90(frame)
                         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                         assert cv2.imwrite(out_path, frame), out_path
 
@@ -224,8 +232,14 @@ def create_aria_calib(args):
     all_local_take_uids = [k.split(".")[0] for k in os.listdir(local_anno_dir)]
     # Find uid and take info
     takes = json.load(open(os.path.join(args.ego4d_data_dir, "takes.json")))
-    take_to_uid = {each_take['root_dir'] : each_take['take_uid'] for each_take in takes if each_take["take_uid"] in all_local_take_uids}
-    assert len(all_local_take_uids) == len(take_to_uid), "Some annotation take doesn't have corresponding info in takes.json"
+    take_to_uid = {
+        each_take["root_dir"]: each_take["take_uid"]
+        for each_take in takes
+        if each_take["take_uid"] in all_local_take_uids
+    }
+    assert len(all_local_take_uids) == len(
+        take_to_uid
+    ), "Some annotation take doesn't have corresponding info in takes.json"
     # Export aria calibration to JSON file
     for take_name, _ in take_to_uid.items():
         # Get aria name
@@ -235,9 +249,13 @@ def create_aria_calib(args):
         take = take[0]
         aria_cam_name = get_ego_aria_cam_name(take)
         # 1. Generate aria calib JSON file
-        vrs_path = os.path.join(args.ego4d_data_dir, "takes", take_name, f"{aria_cam_name}.vrs")
+        vrs_path = os.path.join(
+            args.ego4d_data_dir, "takes", take_name, f"{aria_cam_name}.vrs"
+        )
         if not os.path.exists(vrs_path):
-            print(f"[Warning] No take vrs found at {vrs_path}. Skipped take {take_name}.")
+            print(
+                f"[Warning] No take vrs found at {vrs_path}. Skipped take {take_name}."
+            )
             continue
         output_path = os.path.join(aria_calib_json_output_dir, f"{take_name}.json")
         extract_aria_calib_to_json(vrs_path, output_path)
@@ -247,8 +265,12 @@ def create_aria_calib(args):
         all_cam_calib = aria_calib_json["CameraCalibrations"]
         aria_cam_calib = [c for c in all_cam_calib if c["Label"] == "camera-rgb"][0]
         aria_cam_calib["Projection"]["Params"][0] /= 2
-        aria_cam_calib["Projection"]["Params"][1] = (aria_cam_calib["Projection"]["Params"][1] - 0.5 - 32)/2
-        aria_cam_calib["Projection"]["Params"][2] = (aria_cam_calib["Projection"]["Params"][2] - 0.5 - 32)/2
+        aria_cam_calib["Projection"]["Params"][1] = (
+            aria_cam_calib["Projection"]["Params"][1] - 0.5 - 32
+        ) / 2
+        aria_cam_calib["Projection"]["Params"][2] = (
+            aria_cam_calib["Projection"]["Params"][2] - 0.5 - 32
+        ) / 2
         # Save updated JSON calib file
         with open(os.path.join(output_path), "w") as f:
             json.dump(aria_calib_json, f)

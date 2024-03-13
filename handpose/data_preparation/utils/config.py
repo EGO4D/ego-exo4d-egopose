@@ -49,9 +49,9 @@ def create_arg_parse():
         required=True,
     )
     parser.add_argument(
-        "--extracted_view",
+        "--portrait_view",
         action="store_true",
-        help="whether hand keypoints and images stay in extracted view (normal FPV)"
+        help="whether hand keypoints and images stay in portrait view, instead of landscape view (default)",
     )
 
     # Threshold and parameters in dataloader
