@@ -273,6 +273,20 @@ def joint_dist_angle_check(curr_hand_pose3d):
     return curr_hand_pose3d
 
 
+def reproj_error_check(proj_2d_kpts, anno_2d_kpts, threshold):
+    """
+    Reprojection error check between projected 2d kpts and annotation 2d kpts;
+    Heuristics to filter good 3d kpts
+    """
+    # Compute euclidean distance between each joint
+    joint_dist = np.linalg.norm(proj_2d_kpts - anno_2d_kpts, axis=1)
+    # Ignore hand wrist check due to large ambiguity region
+    joint_dist[0] = 0
+    # Thresholding
+    valid_reproj_flag = joint_dist <= threshold
+    return valid_reproj_flag
+
+
 def get_interested_take(all_uids, takes_df):
     """
     For hand ego-pose baseline model, we are only interested in takes with

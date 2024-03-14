@@ -180,8 +180,8 @@ def save_test_gt_anno(output_dir, gt_anno_private):
                 "right_hand_2d",
                 "left_hand_3d",
                 "right_hand_3d",
-                "left_hand_valid",
-                "right_hand_valid",
+                "left_hand_valid_3d",
+                "right_hand_valid_3d",
             ]:
                 frame_anno.pop(k)
     # 3. Save public un-annotated test JSON file

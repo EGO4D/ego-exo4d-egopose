@@ -15,7 +15,7 @@ from utils.utils import (
     hand_rand_bbox_from_kpts,
     joint_dist_angle_check,
     world_to_cam,
-    xywh2xyxy,
+    reproj_error_check,
 )
 
 
@@ -37,6 +37,7 @@ class ego_pose_anno_loader:
         self.bbox_padding = (
             args.bbox_padding
         )  # Amount of pixels to pad around kpts to find bbox
+        self.reproj_error_threshold = args.reproj_error_threshold
         self.takes = json.load(open(os.path.join(self.dataset_root, "takes.json")))
 
         # Determine annotation sub-directory
@@ -56,6 +57,8 @@ class ego_pose_anno_loader:
             if t["take_uid"] in self.all_take_uid
         }
         self.uid_to_take = {uid: take for take, uid in self.take_to_uid.items()}
+        # TODO: Confirm which splits to use
+        self.splits = json.load(open(os.path.join(self.dataset_root, "annotations/splits.json")))
         self.takes_df = pd.read_csv(
             os.path.join(
                 self.dataset_root, "annotations/egoexo_split_latest_train_val_test.csv"
@@ -148,6 +151,7 @@ class ego_pose_anno_loader:
                     hand_idx + 1
                 )
                 one_hand_2d_kpts = curr_hand_2d_kpts[start_idx:end_idx]
+                # Transform annotation 2d kpts if in portrait view
                 if self.portrait_view:
                     one_hand_2d_kpts = aria_landscape_to_portrait(
                         one_hand_2d_kpts, self.undist_img_dim
@@ -157,15 +161,13 @@ class ego_pose_anno_loader:
                 if np.any(np.isnan(one_hand_3d_kpts_world[0])):
                     one_hand_3d_kpts_world[:, :] = None
 
-                # Hand biomechanical structure check for train and val
-                if self.split != "test":
-                    one_hand_3d_kpts_world = joint_dist_angle_check(
-                        one_hand_3d_kpts_world
-                    )
-                # 3D world to camera (original view)
+                # Hand biomechanical structure check
+                one_hand_3d_kpts_world = joint_dist_angle_check(one_hand_3d_kpts_world)
+                # 3D world to camera
                 one_hand_3d_kpts_cam = world_to_cam(one_hand_3d_kpts_world, curr_extri)
-                # Camera original to original aria image plane
+                # Camera to image plane
                 one_hand_proj_2d_kpts = cam_to_img(one_hand_3d_kpts_cam, curr_intri)
+                # Transform projected 2d kpts if in portrait view
                 if self.portrait_view:
                     one_hand_proj_2d_kpts = aria_landscape_to_portrait(
                         one_hand_proj_2d_kpts, self.undist_img_dim
@@ -176,30 +178,35 @@ class ego_pose_anno_loader:
                     one_hand_filtered_proj_2d_kpts,
                     valid_proj_2d_flag,
                 ) = self.one_hand_kpts_valid_check(one_hand_proj_2d_kpts, aria_mask)
-                # Get filtered 3D kpts in camera original view
-                one_hand_filtered_3d_kpts_cam = one_hand_3d_kpts_cam.copy()
-                one_hand_filtered_3d_kpts_cam[~valid_proj_2d_flag] = None
 
                 # Filter 2D annotation kpts
                 one_hand_filtered_anno_2d_kpts, _ = self.one_hand_kpts_valid_check(
                     one_hand_2d_kpts, aria_mask
                 )
 
+                # TODO: Filter 3D anno by checking reprojection error with 2D anno (which is usually better)
+                valid_reproj_flag = reproj_error_check(one_hand_filtered_proj_2d_kpts,
+                                                       one_hand_filtered_anno_2d_kpts,
+                                                       self.reproj_error_threshold)
+                valid_3d_kpts_flag = valid_proj_2d_flag * valid_reproj_flag
+
                 # Prepare 2d kpts, 3d kpts, bbox and flag data based on number of valid 3D kpts
-                if sum(valid_proj_2d_flag) >= self.valid_kpts_threshold:
+                if sum(valid_3d_kpts_flag) >= self.valid_kpts_threshold:
                     at_least_one_hands_valid = True
                     # Assign original hand wrist 3d kpts back (needed for offset hand wrist)
+                    one_hand_filtered_3d_kpts_cam = one_hand_3d_kpts_cam.copy()
+                    one_hand_filtered_3d_kpts_cam[~valid_3d_kpts_flag] = None
                     one_hand_filtered_3d_kpts_cam[0] = one_hand_3d_kpts_cam[0]
                     # Generate hand bbox based on 2D GT kpts
                     if self.split == "test":
                         one_hand_bbox = hand_rand_bbox_from_kpts(
-                            one_hand_filtered_proj_2d_kpts[valid_proj_2d_flag],
+                            one_hand_filtered_proj_2d_kpts[valid_3d_kpts_flag],
                             self.undist_img_dim,
                         )
                     else:
                         # For train and val, generate hand bbox with padding
                         one_hand_bbox = hand_pad_bbox_from_kpts(
-                            one_hand_filtered_proj_2d_kpts[valid_proj_2d_flag],
+                            one_hand_filtered_proj_2d_kpts[valid_3d_kpts_flag],
                             self.undist_img_dim,
                             self.bbox_padding,
                         )
@@ -208,7 +215,7 @@ class ego_pose_anno_loader:
                     one_hand_bbox = np.array([])
                     one_hand_filtered_3d_kpts_cam = np.array([])
                     one_hand_filtered_anno_2d_kpts = np.array([])
-                    valid_proj_2d_flag = np.array([])
+                    valid_3d_kpts_flag = np.array([])
 
                 # Compose current hand GT info in current frame
                 curr_frame_anno[
@@ -220,7 +227,7 @@ class ego_pose_anno_loader:
                 curr_frame_anno[f"{hand_name}_hand_bbox"] = one_hand_bbox.tolist()
                 curr_frame_anno[
                     f"{hand_name}_hand_valid_3d"
-                ] = valid_proj_2d_flag.tolist()
+                ] = valid_3d_kpts_flag.tolist()
 
             # Append current frame into GT JSON if at least one valid hand exists
             if at_least_one_hands_valid:
@@ -235,16 +242,20 @@ class ego_pose_anno_loader:
         return curr_take_db
 
     # TODO: Correct as needed after egoexo public ego-pose split is updated
-    def init_split(self):
-        # Get tain/val/test df
-        train_df = self.takes_df[self.takes_df["split"] == "TRAIN"]
-        val_df = self.takes_df[self.takes_df["split"] == "VAL"]
-        test_df = self.takes_df[self.takes_df["split"] == "TEST"]
-        # Get train/val/test uid
-        all_train_uid = list(train_df["take_uid"])
-        all_val_uid = list(val_df["take_uid"])
-        all_test_uid = list(test_df["take_uid"])
-        return {"train": all_train_uid, "val": all_val_uid, "test": all_test_uid}
+    def init_split(self, load_from_json=False):
+        if load_from_json:
+            split_to_take_uids = self.splits["split_to_take_uids"]
+            return split_to_take_uids
+        else:
+            # Get tain/val/test df
+            train_df = self.takes_df[self.takes_df["split"] == "TRAIN"]
+            val_df = self.takes_df[self.takes_df["split"] == "VAL"]
+            test_df = self.takes_df[self.takes_df["split"] == "TEST"]
+            # Get train/val/test uid
+            all_train_uid = list(train_df["take_uid"])
+            all_val_uid = list(val_df["take_uid"])
+            all_test_uid = list(test_df["take_uid"])
+            return {"train": all_train_uid, "val": all_val_uid, "test": all_test_uid}
 
     def load_aria_calib(self, curr_take_name):
         # Find aria names

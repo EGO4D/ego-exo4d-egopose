@@ -57,6 +57,7 @@ def create_arg_parse():
     # Threshold and parameters in dataloader
     parser.add_argument("--valid_kpts_num_thresh", type=int, default=10)
     parser.add_argument("--bbox_padding", type=int, default=20)
+    parser.add_argument("--reproj_error_threshold", type=int, default=30)
 
     args = parser.parse_args()
 
