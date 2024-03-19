@@ -26,6 +26,7 @@ def undistort_aria_img(args):
                 anno_type,
                 f"ego_pose_gt_anno_{split}_public.json",
             )
+            # TODO: test split
             assert os.path.exists(
                 gt_anno_path
             ), f"Extraction of aria raw image fails for split={split}. Invalid path: {gt_anno_path}"
@@ -111,6 +112,7 @@ def extract_aria_img(args):
                 anno_type,
                 f"ego_pose_gt_anno_{split}_public.json",
             )
+            # TODO: test split
             assert os.path.exists(
                 gt_anno_path
             ), f"Extraction of aria raw image fails for split={split}. Invalid path: {gt_anno_path}"
@@ -217,19 +219,35 @@ def create_gt_anno(args):
                     json.dump(gt_anno.db, f, indent=4)
             # For test split, create two versions of GT-anno
             else:
-                save_test_gt_anno(gt_anno_output_dir, gt_anno.db)
+                if len(gt_anno.db) == 0:
+                    print(
+                        "[Warning] No test gt-anno will be generated. Please download public release from shared drive."
+                    )
+                else:
+                    save_test_gt_anno(gt_anno_output_dir, gt_anno.db)
 
 
 def create_aria_calib(args):
-    # TODO: Change when new data is released
-    local_anno_dir = "/mnt/volume2/Data/jinxu/suyog_new_hand_anno/hand/annotation"
+    # Find all local annotation takes
+    all_local_take_uids = set()
+    anno_type_dir_dict = {"manual": "annotation", "auto": "automatic"}
 
+    for split in args.splits:
+        for anno_type_ in args.anno_types:
+            anno_type = anno_type_dir_dict[anno_type_]
+            curr_split_anno_dir = os.path.join(
+                args.ego4d_data_dir, f"annotations/ego_pose/{split}/hand", anno_type
+            )
+            if os.path.exists(curr_split_anno_dir):
+                curr_split_take_uids = [
+                    k.split(".")[0] for k in os.listdir(curr_split_anno_dir)
+                ]
+                all_local_take_uids.update(curr_split_take_uids)
+    all_local_take_uids = list(all_local_take_uids)
     # Create aria calib JSON output directory
     aria_calib_json_output_dir = os.path.join(args.gt_output_dir, "aria_calib_json")
     os.makedirs(aria_calib_json_output_dir, exist_ok=True)
 
-    # Find all local annotation takes
-    all_local_take_uids = [k.split(".")[0] for k in os.listdir(local_anno_dir)]
     # Find uid and take info
     takes = json.load(open(os.path.join(args.ego4d_data_dir, "takes.json")))
     take_to_uid = {
@@ -286,8 +304,6 @@ def main(args):
             extract_aria_img(args)
         elif step == "undistorted_image":
             undistort_aria_img(args)
-        else:
-            raise Exception(f"Invalid step: {step}")
 
 
 if __name__ == "__main__":

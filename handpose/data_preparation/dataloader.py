@@ -14,8 +14,8 @@ from utils.utils import (
     hand_pad_bbox_from_kpts,
     hand_rand_bbox_from_kpts,
     joint_dist_angle_check,
-    world_to_cam,
     reproj_error_check,
+    world_to_cam,
 )
 
 
@@ -38,60 +38,66 @@ class ego_pose_anno_loader:
             args.bbox_padding
         )  # Amount of pixels to pad around kpts to find bbox
         self.reproj_error_threshold = args.reproj_error_threshold
+        self.portrait_view = (
+            args.portrait_view
+        )  # Whether use portrait view (Default is landscape view)
+        self.aria_calib_dir = os.path.join(args.gt_output_dir, "aria_calib_json")
         self.takes = json.load(open(os.path.join(self.dataset_root, "takes.json")))
+        self.splits = json.load(
+            open(os.path.join(self.dataset_root, "annotations/splits.json"))
+        )
 
-        # Determine annotation sub-directory
+        # Determine annotation and camera pose directory
         anno_type_dir_dict = {"manual": "annotation", "auto": "automatic"}
         self.hand_anno_dir = os.path.join(
             self.dataset_root,
-            "annotations/ego_pose/hand",
+            f"annotations/ego_pose/{split}/hand",
             anno_type_dir_dict[self.anno_type],
         )
         self.cam_pose_dir = os.path.join(
-            self.dataset_root, "annotations/ego_pose/hand/camera_pose"
+            self.dataset_root, f"annotations/ego_pose/{split}/camera_pose"
         )
-        self.all_take_uid = [k[:-5] for k in os.listdir(self.hand_anno_dir)]
-        self.take_to_uid = {
-            t["root_dir"]: t["take_uid"]
-            for t in self.takes
-            if t["take_uid"] in self.all_take_uid
-        }
-        self.uid_to_take = {uid: take for take, uid in self.take_to_uid.items()}
-        # TODO: Confirm which splits to use
-        self.splits = json.load(open(os.path.join(self.dataset_root, "annotations/splits.json")))
-        self.takes_df = pd.read_csv(
-            os.path.join(
-                self.dataset_root, "annotations/egoexo_split_latest_train_val_test.csv"
-            )
-        )
-        # Whether use portrait view (Default is to use landscape view)
-        self.portrait_view = args.portrait_view
-        self.aria_calib_dir = os.path.join(args.gt_output_dir, "aria_calib_json")
-        # TODO: Modify as needed with updated public egoexo data
-        self.split_take_dict = self.init_split()
+
+        # Load dataset
         self.db = self.load_raw_data()
 
     def load_raw_data(self):
         gt_db = {}
 
+        # Find all annotation takes from local direcctory by splits
+        # Check test anno availability. No gt-anno will be generated for public.
+        if not os.path.exists(self.hand_anno_dir):
+            assert (
+                self.split == "test"
+            ), f"No annotation found for {self.split} split at {self.hand_anno_dir}.\
+                Make sure you follow step 0 to download data first."
+            return gt_db
+        # Get all local annotation takes for train/val split
+        split_all_local_takes = [
+            k.split(".")[0] for k in os.listdir(self.hand_anno_dir)
+        ]
+        # take to uid dict
+        take_to_uid = {
+            t["root_dir"]: t["take_uid"]
+            for t in self.takes
+            if t["take_uid"] in split_all_local_takes
+        }
+        uid_to_take = {uid: take for take, uid in take_to_uid.items()}
+
         # Get all valid local take uids that are used in current split
-        curr_split_uid = self.split_take_dict[self.split]
-        common_take_uid = list(set(self.all_take_uid) & set(self.takes_df["take_uid"]))
-        available_cam_pose_uid = [k[:-5] for k in os.listdir(self.cam_pose_dir)]
+        curr_split_uid = self.splits["split_to_take_uids"][self.split]
+        common_take_uid = list(set(split_all_local_takes) & set(curr_split_uid))
+        available_cam_pose_uid = [
+            k.split(".")[0] for k in os.listdir(self.cam_pose_dir)
+        ]
         comm_take_w_cam_pose = list(set(common_take_uid) & set(available_cam_pose_uid))
-        all_interested_scenario_uid, _ = get_interested_take(
-            comm_take_w_cam_pose, self.takes_df
-        )
-        available_curr_split_uid = list(
-            set(curr_split_uid) & set(all_interested_scenario_uid)
-        )
         print(
-            f"Trying to use {len(available_curr_split_uid)} takes in {self.split} dataset"
+            f"Trying to use {len(comm_take_w_cam_pose)} takes in {self.split} dataset"
         )
 
         # Iterate through all takes from annotation directory and check
-        for curr_take_uid in available_curr_split_uid:
-            curr_take_name = self.uid_to_take[curr_take_uid]
+        for curr_take_uid in comm_take_w_cam_pose:
+            curr_take_name = uid_to_take[curr_take_uid]
             # Load annotation, camera pose JSON and image directory
             curr_take_anno_path = os.path.join(
                 self.hand_anno_dir, f"{curr_take_uid}.json"
@@ -184,10 +190,12 @@ class ego_pose_anno_loader:
                     one_hand_2d_kpts, aria_mask
                 )
 
-                # TODO: Filter 3D anno by checking reprojection error with 2D anno (which is usually better)
-                valid_reproj_flag = reproj_error_check(one_hand_filtered_proj_2d_kpts,
-                                                       one_hand_filtered_anno_2d_kpts,
-                                                       self.reproj_error_threshold)
+                # Filter 3D anno by checking reprojection error with 2D anno (which is usually better)
+                valid_reproj_flag = reproj_error_check(
+                    one_hand_filtered_proj_2d_kpts,
+                    one_hand_filtered_anno_2d_kpts,
+                    self.reproj_error_threshold,
+                )
                 valid_3d_kpts_flag = valid_proj_2d_flag * valid_reproj_flag
 
                 # Prepare 2d kpts, 3d kpts, bbox and flag data based on number of valid 3D kpts
@@ -240,22 +248,6 @@ class ego_pose_anno_loader:
                 curr_take_db[frame_idx] = curr_frame_anno
 
         return curr_take_db
-
-    # TODO: Correct as needed after egoexo public ego-pose split is updated
-    def init_split(self, load_from_json=False):
-        if load_from_json:
-            split_to_take_uids = self.splits["split_to_take_uids"]
-            return split_to_take_uids
-        else:
-            # Get tain/val/test df
-            train_df = self.takes_df[self.takes_df["split"] == "TRAIN"]
-            val_df = self.takes_df[self.takes_df["split"] == "VAL"]
-            test_df = self.takes_df[self.takes_df["split"] == "TEST"]
-            # Get train/val/test uid
-            all_train_uid = list(train_df["take_uid"])
-            all_val_uid = list(val_df["take_uid"])
-            all_test_uid = list(test_df["take_uid"])
-            return {"train": all_train_uid, "val": all_val_uid, "test": all_test_uid}
 
     def load_aria_calib(self, curr_take_name):
         # Find aria names

@@ -4,7 +4,7 @@ Data preparation for hand ego-pose benchmark task in [Ego-Exo4D](https://github.
 ## Getting Started
 Follow instruction below to first install necessary packages, and then follow step 0 to step 3 to generate the hand ego pose data, including undisorted Aria images and corresponding 2D & 3D hand pose annotaton JSON files. Some notes about the directory to be used:
 
-- `<egoexo_output_dir>`: Directory of the data downloaded by Ego-Exo4D Downloader.
+- `<egoexo_output_dir>`: Directory of the data downloaded by Ego-Exo4D CLI Downloader.
 - `<gt_output_dir>`: Output directory of hand ego pose data, which will be generated later.
 
 ### Set up
@@ -14,15 +14,19 @@ pip install -r requirement.txt
 ```
 
 ### Step 0: Download Ego-Exo4D data
-To prepare the data needed for hand ego pose estimation, you need to first download the data via [Ego-Exo4D Downloader](https://docs.ego-exo4d-data.org/download/) including `annotations`, `metadata`, frame aligned videos and VRS files. 
+To prepare the data needed for hand ego pose estimation, you need to first download the data via [Ego-Exo4D CLI Downloader](https://docs.ego-exo4d-data.org/download/) including `annotations`, `metadata`, frame aligned videos and VRS files. 
 
 First, run command below to download ego pose related `annotations` and `metadata`:
 
 ```
-egoexo -o <egoexo_output_dir> --parts annotations metadata --benchmarks egopose
+egoexo -o <egoexo_output_dir> --parts annotations metadata ego_pose_pseudo_gt --benchmarks egopose
 ```
 
-Then, run command below to download frame aligned videos for only annotated takes:
+Then, run command below to download frame aligned videos for only annotated takes. You can additionally filter based on splits and annotation type (see details below). Default is to download data for all manually annotated takes in all splits.
+
+Filter based on:
+- `--splits`: valid option: `train`, `val`, `test`
+- `--anno_type`: valid option: `manual`, `auto`
 
 ```
 # 1. change to data preparation directory
@@ -30,7 +34,7 @@ cd handpose/data_preparation/
 
 # 2. Download annotated take's frame aligned videos
 python3 scripts/download.py \
-    --output_dir <egoexo_output_dir> \
+    --ego4d_data_dir <egoexo_output_dir> \
     --parts takes
 ```
 
@@ -38,10 +42,10 @@ Finally, for VRS files (which is needed to generate aria calibration JSON file),
 *NOTE: If you choose to followw option 2, please check if the the calibration file exists for every take as this list might not be up-to-date.*
 
 #### Option 1: Download `take_vrs`
-Run command below to download `take_vrs` for all annotated takes:
+Run command below to download `take_vrs` for all annotated takes. Default is to download data for all manually annotated takes in all splits.
 ```
 python3 scripts/download.py \
-    --output_dir <egoexo_output_dir> \
+    --ego4d_data_dir <egoexo_output_dir> \
     --parts take_vrs
 ```
 
@@ -50,18 +54,18 @@ Download pre-generated Aria calibration file from [here](https://drive.google.co
 
 
 ### Step 1: Generate Aria calibration JSON file
-If you follow option 1 in downloading VRS file, run command below to generate Aria calibration JSON files which will be used later for Aria image undistortion. If you follow option 2, you may skip this step.
+If you follow option 1 in downloading VRS file, run command below to generate Aria calibration JSON files which will be used later for Aria image undistortion. Default is to generate calibration file for all manually annotated takes in all splits. If you follow option 2, you may skip this step.
 ```
 python3 main.py \
     --steps aria_calib
     --ego4d_data_dir <egoexo_output_dir> \
     --gt_output_dir <gt_output_dir>
 ```  
-Updated comment: need to check with Suyog if the format changed (from egoexo_split_latest_train_val_test.csv to splits.json).  
-Updated comment: hide test public and test private to users. Users need to download test public from google drive. 
 
 ### Step 2: Generate ground-truth annotation JSON file 
-Run `main.py` with `steps=gt_anno` to generate ground truth annotation file. Default is to create ground truth annotation JSON file for manually annotated data in all splits (`train/val/test`).
+Run `main.py` with `steps=gt_anno` to generate ground truth annotation file. Default is to create ground truth annotation JSON file for manually annotated data in all splits (`train/val/test`). 
+
+**Note**: No test ground-truth annotation JSON will be generated for public. Please download the public test release from shared drive.
 
 ```
 python3 main.py \
