@@ -175,7 +175,7 @@ def save_test_gt_anno(output_dir, gt_anno_private):
     with open(
         os.path.join(output_dir, f"ego_pose_gt_anno_test_private.json"), "w"
     ) as f:
-        json.dump(gt_anno_private, f, indent=4)
+        json.dump(gt_anno_private, f)
     # 2. Exclude GT 2D & 3D joints and valid flag information for public un-annotated test file
     gt_anno_public = copy.deepcopy(gt_anno_private)
     for _, take_anno in gt_anno_public.items():
