@@ -191,7 +191,7 @@ def save_test_gt_anno(output_dir, gt_anno_private):
                 frame_anno.pop(k)
     # 3. Save public un-annotated test JSON file
     with open(os.path.join(output_dir, f"ego_pose_gt_anno_test_public.json"), "w") as f:
-        json.dump(gt_anno_public, f, indent=4)
+        json.dump(gt_anno_public, f)
 
 
 def create_gt_anno(args):
@@ -219,7 +219,7 @@ def create_gt_anno(args):
                     ),
                     "w",
                 ) as f:
-                    json.dump(gt_anno.db, f, indent=4)
+                    json.dump(gt_anno.db, f)
             # For test split, create two versions of GT-anno
             else:
                 if len(gt_anno.db) == 0:

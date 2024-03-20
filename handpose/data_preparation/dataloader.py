@@ -101,7 +101,7 @@ class ego_pose_anno_loader:
         ]
         comm_take_w_cam_pose = list(set(common_take_uid) & set(available_cam_pose_uid))
         print(
-            f"Trying to use {len(comm_take_w_cam_pose)} takes in {self.split} dataset"
+            f"Trying to use {len(comm_take_w_cam_pose)} takes in {self.split} ({self.anno_type}) dataset"
         )
 
         # Iterate through all takes from annotation directory and check
@@ -312,7 +312,8 @@ class ego_pose_anno_loader:
         ### Load 2D GT hand kpts ###
         # Return NaN if no annotation exists
         if (
-            "annotation2D" not in frame_anno[0].keys()
+            len(frame_anno) == 0
+            or "annotation2D" not in frame_anno[0].keys()
             or aria_cam_name not in frame_anno[0]["annotation2D"].keys()
             or len(frame_anno[0]["annotation2D"][aria_cam_name]) == 0
         ):
@@ -352,7 +353,8 @@ class ego_pose_anno_loader:
         ### Load 3D GT hand kpts ###
         # Return NaN if no annotation exists
         if (
-            "annotation3D" not in frame_anno[0].keys()
+            len(frame_anno) == 0
+            or "annotation3D" not in frame_anno[0].keys()
             or len(frame_anno[0]["annotation3D"]) == 0
         ):
             return None, None, None
@@ -366,13 +368,11 @@ class ego_pose_anno_loader:
                     if finger_joint_order:
                         for finger_joint_idx in finger_joint_order:
                             finger_k_json = f"{hand}_{finger}_{finger_joint_idx}"
-                            # Load 3D if exist annotation, and check for minimum number of visible views
-                            if (
-                                finger_k_json in curr_frame_3d_anno.keys()
-                                and curr_frame_3d_anno[finger_k_json][
-                                    "num_views_for_3d"
-                                ]
+                            # Load 3D if exist annotation, and check for minimum number of visible views for manual annotations
+                            if finger_k_json in curr_frame_3d_anno.keys() and (
+                                curr_frame_3d_anno[finger_k_json]["num_views_for_3d"]
                                 >= 3
+                                or self.anno_type == "auto"
                             ):
                                 curr_frame_3d_kpts.append(
                                     [
@@ -392,10 +392,9 @@ class ego_pose_anno_loader:
                     else:
                         finger_k_json = f"{hand}_{finger}"
                         # Load 3D if exist annotation, and check for minimum number of visible views
-                        if (
-                            finger_k_json in curr_frame_3d_anno.keys()
-                            and curr_frame_3d_anno[finger_k_json]["num_views_for_3d"]
-                            >= 3
+                        if finger_k_json in curr_frame_3d_anno.keys() and (
+                            curr_frame_3d_anno[finger_k_json]["num_views_for_3d"] >= 3
+                            or self.anno_type == "auto"
                         ):
                             curr_frame_3d_kpts.append(
                                 [
