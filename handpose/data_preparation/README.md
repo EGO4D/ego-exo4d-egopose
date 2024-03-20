@@ -38,15 +38,15 @@ python3 scripts/download.py \
     --parts takes
 ```
 
-Finally, for VRS files (which is needed to generate aria calibration JSON file), you can either choose to follow option 1: download `take_vrs` or option 2: skip `take_vrs` download and get pre-generated aria calibration JSON file.  
+Finally, for VRS files (which is needed to generate aria calibration JSON file), you can either choose to follow option 1: download `take_vrs_noimagestream` or option 2: skip `take_vrs_noimagestream` download and get pre-generated aria calibration JSON file.  
 *NOTE: If you choose to followw option 2, please check if the the calibration file exists for every take as this list might not be up-to-date.*
 
-#### Option 1: Download `take_vrs`
-Run command below to download `take_vrs` for all annotated takes. Default is to download data for all manually annotated takes in all splits.
+#### Option 1: Download `take_vrs_noimagestream`
+Run command below to download `take_vrs_noimagestream` for all annotated takes. Default is to download data for all manually annotated takes in all splits.
 ```
 python3 scripts/download.py \
     --ego4d_data_dir <egoexo_output_dir> \
-    --parts take_vrs
+    --parts take_vrs_noimagestream
 ```
 
 #### Option 2: Download Aria calibration JSON file

@@ -37,7 +37,7 @@ def create_arg_parse():
     args = parser.parse_args()
     # Can only filter takes and take_vrs for now
     for p in args.parts:
-        assert p in ["takes", "take_vrs"], f"Invalid parts: {p}"
+        assert p in ["takes", "take_vrs_noimagestream"], f"Invalid parts: {p}"
     # split sanity check
     for split in args.splits:
         assert split in ["train", "val", "test"], f"Invalid split: {split}"
@@ -75,8 +75,8 @@ def main(args):
         if p == "takes":
             cmd = f"egoexo -o {args.ego4d_data_dir} --parts takes --views ego --uids {cmd_uids}"
             os.system(cmd)
-        if p == "take_vrs":
-            cmd = f"egoexo -o {args.ego4d_data_dir} --parts take_vrs --uids {cmd_uids}"
+        if p == "take_vrs_noimagestream":
+            cmd = f"egoexo -o {args.ego4d_data_dir} --parts take_vrs_noimagestream --uids {cmd_uids}"
             os.system(cmd)
 
 
