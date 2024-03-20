@@ -77,17 +77,16 @@ def main(args):
             # Append into output JSON file
             take_uid, frame_number, hand_order = (
                 meta["take_uid"][0],
-                str(meta["frame_number"].to(int).item()),
+                str(meta["frame_number"].item()),
                 meta["hand_order"][0],
             )
             pred_output[take_uid][frame_number][
-                f"{hand_order}_hand"
+                f"{hand_order}_hand_3d"
             ] = pred_3d_pts.tolist()
 
     ######### Save output JSON file #########
     os.makedirs(args.output_dir, exist_ok=True)
-    ckpt_type = re.split("[/_\.]", args.pretrained_ckpt)[-2]
-    pred_output_path = os.path.join(args.output_dir, f"ego_pose_pred_{ckpt_type}.json")
+    pred_output_path = os.path.join(args.output_dir, f"ego_pose_pred.json")
     with open(pred_output_path, "w") as f:
         json.dump(pred_output, f, indent=4)
     print(f"Successfully saved inference output at {pred_output_path}")

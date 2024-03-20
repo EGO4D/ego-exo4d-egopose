@@ -51,8 +51,8 @@ The model inference output need to be saved as a single JSON file with specific 
 {
     "<take_uid>": {
         "<frame_number>": {
-                "left_hand": [],
-                "right_hand": []     
+                "left_hand_3d": [],
+                "right_hand_3d": []     
         }
     }
 }

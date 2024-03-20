@@ -174,7 +174,7 @@ class ego4dDataset(Dataset):
                                 curr_f_anno[f"{hand_order}_hand_3d"]
                             )
                             single_hand_anno["valid_flag"] = np.array(
-                                curr_f_anno[f"{hand_order}_hand_valid"]
+                                curr_f_anno[f"{hand_order}_hand_valid_3d"]
                             )
                             single_hand_anno["bbox"] = np.array(
                                 curr_f_anno[f"{hand_order}_hand_bbox"]
@@ -206,8 +206,8 @@ class ego4dDataset(Dataset):
         {
             "<take_uid>": {
                 "frame_number": {
-                        "left_hand":  [],
-                        "right_hand": []
+                        "left_hand_3d":  [],
+                        "right_hand_3d": []
                 }
             }
         }
@@ -219,8 +219,7 @@ class ego4dDataset(Dataset):
         for take_uid, take_anno in gt_anno.items():
             curr_take_pred_temp = {}
             for frame_number in take_anno.keys():
-                curr_frame_pred_temp = {"left_hand": [], "right_hand": []}
-                curr_take_pred_temp[str(frame_number)] = curr_frame_pred_temp
+                curr_take_pred_temp[frame_number] = {"left_hand_3d": [], "right_hand_3d": []}
             pred_temp[take_uid] = curr_take_pred_temp
         return pred_temp
 
