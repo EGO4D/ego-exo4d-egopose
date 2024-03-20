@@ -306,6 +306,17 @@ def get_interested_take(all_uids, takes_df):
     return all_interested_scenario_uid, scenario_take_dict
 
 
+def get_ego_pose_takes_from_splits(splits):
+    """
+    Filter for ego pose takes from splits.json
+    """
+    return [
+        uid
+        for uid in splits["take_uid_to_benchmark"]
+        if "ego_pose" in splits["take_uid_to_benchmark"][uid]
+    ]
+
+
 def get_ego_aria_cam_name(take):
     ego_cam_names = [
         x["cam_id"]

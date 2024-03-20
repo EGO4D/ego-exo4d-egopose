@@ -9,6 +9,7 @@ from utils.utils import (
     aria_landscape_to_portrait,
     cam_to_img,
     get_ego_aria_cam_name,
+    get_ego_pose_takes_from_splits,
     get_interested_take,
     HAND_ORDER,
     hand_pad_bbox_from_kpts,
@@ -85,8 +86,16 @@ class ego_pose_anno_loader:
         uid_to_take = {uid: take for take, uid in take_to_uid.items()}
 
         # Get all valid local take uids that are used in current split
+        # 1. Filter takes based on split (train/val/test)
         curr_split_uid = self.splits["split_to_take_uids"][self.split]
-        common_take_uid = list(set(split_all_local_takes) & set(curr_split_uid))
+        # 2. Filter takes based on benchmark (ego_pose)
+        ego_pose_uid = get_ego_pose_takes_from_splits(self.splits)
+        curr_split_ego_pose_uid = list(set(curr_split_uid) & set(ego_pose_uid))
+        # 3. Filter common takes
+        common_take_uid = list(
+            set(split_all_local_takes) & set(curr_split_ego_pose_uid)
+        )
+        # 4. Filter takes with available camera pose file
         available_cam_pose_uid = [
             k.split(".")[0] for k in os.listdir(self.cam_pose_dir)
         ]

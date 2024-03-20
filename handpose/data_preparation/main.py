@@ -27,12 +27,13 @@ def undistort_aria_img(args):
                 f"ego_pose_gt_anno_{split}_public.json",
             )
             # TODO: test split
-            assert os.path.exists(
-                gt_anno_path
-            ), f"Extraction of aria raw image fails for split={split}. Invalid path: {gt_anno_path}"
+            if not os.path.exists(gt_anno_path):
+                print(
+                    f"[Warning] Undistortion of aria raw image fails for split={split}({anno_type}). Invalid path: {gt_anno_path}. Skipped for now."
+                )
+                continue
             gt_anno = json.load(open(gt_anno_path))
             # Input and output root path
-            vrs_root = os.path.join(args.ego4d_data_dir, "captures")
             dist_img_root = os.path.join(
                 args.gt_output_dir, "image", "distorted", split
             )
@@ -57,9 +58,11 @@ def undistort_aria_img(args):
                 pinhole = calibration.get_linear_camera_calibration(512, 512, 150)
                 # Input and output directory
                 curr_dist_img_dir = os.path.join(dist_img_root, take_name)
-                assert os.path.exists(
-                    curr_dist_img_dir
-                ), f"{take_name} doesn't have extracted raw aria images yet."
+                if not os.path.exists(curr_dist_img_dir):
+                    print(
+                        f"[Warning] No extracted raw aria images found at {curr_dist_img_dir}. Skipped take {take_name}."
+                    )
+                    continue
                 curr_undist_img_dir = os.path.join(undist_img_root, take_name)
                 os.makedirs(curr_undist_img_dir, exist_ok=True)
                 # Extract undistorted aria images
@@ -73,11 +76,9 @@ def undistort_aria_img(args):
                         curr_dist_img_path = os.path.join(
                             curr_dist_img_dir, f"{f_idx:06d}.jpg"
                         )
-                        if not os.path.exists(curr_dist_img_path):
-                            print(
-                                f"[Warning] No distorted images found at {curr_dist_img_path}. Skipped take {take_name} - frame_number={frame_number}"
-                            )
-                            continue
+                        assert os.path.exists(
+                            curr_dist_img_path
+                        ), f"No distorted images found at {curr_dist_img_path}. Please extract images with steps=raw_images first."
                         curr_dist_image = np.array(Image.open(curr_dist_img_path))
                         curr_dist_image = (
                             np.rot90(curr_dist_image)
@@ -113,9 +114,11 @@ def extract_aria_img(args):
                 f"ego_pose_gt_anno_{split}_public.json",
             )
             # TODO: test split
-            assert os.path.exists(
-                gt_anno_path
-            ), f"Extraction of aria raw image fails for split={split}. Invalid path: {gt_anno_path}"
+            if not os.path.exists(gt_anno_path):
+                print(
+                    f"[Warning] Extraction of aria raw image fails for split={split}({anno_type}). Invalid path: {gt_anno_path}. Skipped for now."
+                )
+                continue
             gt_anno = json.load(open(gt_anno_path))
             # Input and output root path
             take_video_dir = os.path.join(args.ego4d_data_dir, "takes")
