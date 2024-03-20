@@ -9,13 +9,13 @@ To perform model evaluation, you need to have 1. ground truth annotation JSON fi
 {
     "<take_uid>": {
         "<frame_number>": {
-                "left_hand": [],
-                "right_hand": []     
+                "left_hand_3d": [],
+                "right_hand_3d": []
         }
     }
 }
 ```
-You can find one sample inference output JSON file from [here](https://drive.google.com/file/d/1t9U3Em_Y5sjTN5_4GZ6S6rnYUNI5L943/view?usp=sharing).
+You can find one sample inference output JSON file from [here](https://drive.google.com/drive/folders/1jmN427e2f1vsOLcTUkiAKVlqJUx5acfS?usp=sharing).
 
 
 ## Evaluation

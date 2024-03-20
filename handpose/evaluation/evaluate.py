@@ -105,18 +105,19 @@ def main(args):
                         np.array(curr_frame_gt_anno[f"{hand_order}_hand_3d"]) * 1000
                     )
                     # Get 3D hand joints prediction
-                    curr_frame_pred = (
-                        np.array(
-                            pred_anno[take_uid][frame_number][f"{hand_order}_hand"]
-                        )
-                        * 1000
-                    )
+                    try:
+                        curr_frame_pred = np.array(pred_anno[take_uid][frame_number][f"{hand_order}_hand_3d"]) * 1000
+                        assert curr_frame_pred.shape == (21,3)
+                    except (KeyError, AssertionError) as e:
+                        print(f"No prediction found for {take_uid} - {frame_number} - {hand_order} hand")
+                        raise
+
                     # Add back hand wrist if prediction is offset by hand wrist
                     if args.offset:
                         curr_frame_pred += gt_3d_kpts[0]
                     # Get valid flag
                     vis_flag = torch.from_numpy(
-                        np.array(curr_frame_gt_anno[f"{hand_order}_hand_valid"])
+                        np.array(curr_frame_gt_anno[f"{hand_order}_hand_valid_3d"])
                     )
 
                     # Compute MPJPE and PA-MPJPE
