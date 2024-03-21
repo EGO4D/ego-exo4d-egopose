@@ -46,10 +46,9 @@ python3 scripts/download.py \
     --parts takes
 ```
 
-3. Download VRS files parameters in preparation for image undistortion. We provide two options:
-- Option 1: download `take_vrs_noimagestream`.  
+3. Download Aria camera intrinsics parameters in preparation for image undistortion. We provide two options:
+- Option 1: download `take_vrs_noimagestream` which is a set of vrs files without image data.  
 - Option 2: skip `take_vrs_noimagestream` download and get pre-generated aria calibration JSON files.  
-*NOTE: If you choose to followw option 2, please check if the the calibration file exists for every take as this list might not be up-to-date.*
 
 #### Option 1: Download `take_vrs_noimagestream`
 Download `take_vrs_noimagestream` for all annotated takes. Default is to download data for all manually annotated takes in all splits.
@@ -65,12 +64,13 @@ python3 main.py \
     --ego4d_data_dir <egoexo_output_dir> \
     --gt_output_dir <gt_output_dir>
 ```  
-The generated files should be stored in `<gt_output_dir>/aria_calib_json/`
+The generated files should be stored in `<gt_output_dir>/aria_calib_json/`  
+*NOTE: If you choose to follow option 2, please check if the calibration file exists for every take as this list might not be up-to-date.*
 
 #### Option 2: Download Aria calibration JSON file
 Download pre-generated Aria calibration files for manually annotated files from [here](https://drive.google.com/file/d/1Emi-Zcl2uJKmZo9FARpPT-ASHxT8qchj/view?usp=drive_link). Extract all the JSON files and put it under `<gt_output_dir>/aria_calib_json/`.
 
-### Step 2: Prepare annotation JSON files
+### Step 2: Prepare annotation JSON files in preparation for training
 #### Test split files
 Put hand bounding box file([ego_pose_gt_anno_test_public.json](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/ego_pose_gt_anno_test_public.json)) in `<gt_output_dir>/annotation/manual`.  
 The structure of `ego_pose_gt_anno_test_public.json` is:  
@@ -155,10 +155,10 @@ The 21 keypoints for right hand are visualized below, with left hand has symmetr
 
 
 ### Landscape vs. Portrait view
-When generating ground truth annotation and Aria images, the default orientation is *landscape view* following the convention of Aria glass. 
+When generating ground truth annotation and Aria images, the default orientation is *landscape view* following the convention of Aria glasses. 
 See figure below for landscape view vs. portrait view. 
 
-You can change the Aria images and 2D annotations to *portrait view* by adding `--portrait_view` flag in step 2 and step 3. Please make sure to keep consistent view orientation between annotation and images.  
+You can change the Aria images and 2D annotations to *portrait view* by adding `--portrait_view` flag in step 2 and step 3. Please make sure to keep consistent view orientation between annotations and images.  
 See [visualization.ipynb](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/visualization.ipynb) for an example to keep consistency for 3D annotations by rotating Aria camera pose.   
 TODO: add to the script
 
