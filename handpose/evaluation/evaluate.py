@@ -2,7 +2,6 @@ import argparse
 import json
 
 import numpy as np
-import torch
 
 
 def parse_args_function():
@@ -34,7 +33,7 @@ def mpjpe(predicted, target):
     Reference: https://github.com/zhaoweixi/GraFormer/blob/main/common/loss.py
     """
     assert predicted.shape == target.shape
-    return torch.mean(torch.norm(predicted - target, dim=len(target.shape) - 1))
+    return np.mean(np.linalg.norm(predicted - target, axis=len(target.shape) - 1))
 
 
 def p_mpjpe(predicted, target):
@@ -116,15 +115,14 @@ def main(args):
                     if args.offset:
                         curr_frame_pred += gt_3d_kpts[0]
                     # Get valid flag
-                    vis_flag = torch.from_numpy(
-                        np.array(curr_frame_gt_anno[f"{hand_order}_hand_valid_3d"])
+                    vis_flag = np.array(curr_frame_gt_anno[f"{hand_order}_hand_valid_3d"]
                     )
 
                     # Compute MPJPE and PA-MPJPE
-                    valid_pred_3d_kpts = torch.from_numpy(curr_frame_pred)
-                    valid_pred_3d_kpts = valid_pred_3d_kpts[vis_flag].view(1, -1, 3)
-                    valid_pose_3d_gt = torch.from_numpy(gt_3d_kpts)
-                    valid_pose_3d_gt = valid_pose_3d_gt[vis_flag].view(1, -1, 3)
+                    valid_pred_3d_kpts = curr_frame_pred
+                    valid_pred_3d_kpts = valid_pred_3d_kpts[vis_flag].reshape(1, -1, 3)
+                    valid_pose_3d_gt = gt_3d_kpts
+                    valid_pose_3d_gt = valid_pose_3d_gt[vis_flag].reshape(1, -1, 3)
                     epoch_loss_3d_pos.append(
                         mpjpe(valid_pred_3d_kpts, valid_pose_3d_gt).item()
                     )
