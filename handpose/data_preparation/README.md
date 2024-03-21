@@ -4,9 +4,10 @@ Data preparation for hand ego-pose benchmark task in [Ego-Exo4D](https://github.
 ## Getting Started
 Follow instructions below to 
 - Prepare environments
-- Download and pre-process the hand ego pose data, including undisorted Aria images and corresponding 2D & 3D hand pose annotations. 
+- Download and pre-process the hand ego pose data, including undisorted Aria images and corresponding 2D & 3D hand pose annotations.   
+
 We provide scripts to download and prepare data for both manually and automatically annotated takes. 
-Considering the data size, we encourage the users to start with manual annotations first. 
+Considering the data size, we encourage the users to start with manually annotationed takes first. 
 See [paper](https://arxiv.org/abs/2311.18259) for details on automatic annotations and how it can help improve the performance.  
 
 ## Folder naming conventions
