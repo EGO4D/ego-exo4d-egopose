@@ -2,13 +2,13 @@
 Data preparation for hand ego-pose benchmark task in [Ego-Exo4D](https://github.com/facebookresearch/Ego4d/tree/main), [paper](https://arxiv.org/abs/2311.18259), [EvalAI challenge](https://eval.ai/web/challenges/challenge-page/2249/overview).
 
 ## Getting Started
-Follow instruction below to 
+Follow instructions below to 
 - Prepare environments
-- Download and pre-process the hand ego pose data, including undisorted Aria images and corresponding 2D & 3D hand pose annotaton JSON files. 
+- Download and pre-process the hand ego pose data, including undisorted Aria images and corresponding 2D & 3D hand pose annotations. 
 
 ## Folder naming conventions
 - `<egoexo_output_dir>`: Directory of the data downloaded by Ego-Exo4D CLI Downloader.
-- `<gt_output_dir>`: Output directory of hand ego pose data, which will be generated later.
+- `<gt_output_dir>`: Output directory of processed hand ego pose data, which will be generated later.
 
 ## Set up
 Run command below to install necessary packages.
@@ -28,12 +28,7 @@ Download ego pose related `annotations` and `metadata` for both manual and autom
 egoexo -o <egoexo_output_dir> --parts annotations metadata ego_pose_pseudo_gt --benchmarks egopose
 ```
 
-### Step 2: Download Ego-Exo4D frame aligned videos for annotated takes 
-Additional filters can be applied based on splits and annotation type (see details below). Default is to download data for all manually annotated takes in all splits.
-
-Filter based on:
-- `--splits`: valid option: `train`, `val`, `test`
-- `--anno_type`: valid option: `manual`, `auto`
+### Step 2: Download Ego-Exo4D frame aligned videos for annotated takes
 
 ```
 # 1. change to data preparation directory
@@ -44,6 +39,11 @@ python3 scripts/download.py \
     --ego4d_data_dir <egoexo_output_dir> \
     --parts takes
 ```
+Additional filters can be applied based on splits and annotation type (see details below). Default is to download data for all manually annotated takes in all splits.
+
+Filter based on:
+- `--splits`: valid option: `train`, `val`, `test`
+- `--anno_type`: valid option: `manual`, `auto`
 
 ### Step 3: Download Aria camera intrinsics parameters in preparation for image undistortion.  
 We provide two options:
@@ -66,12 +66,12 @@ python3 main.py \
 ```  
 The generated files should be stored in `<gt_output_dir>/aria_calib_json/`  
 
-#### Option 2: Download Aria calibration JSON file
-Download pre-generated Aria calibration files for manually annotated files from [here](https://drive.google.com/file/d/1Emi-Zcl2uJKmZo9FARpPT-ASHxT8qchj/view?usp=drive_link). Extract all the JSON files and put it under `<gt_output_dir>/aria_calib_json/`.
+#### Option 2: Download pre-generated Aria calibration JSON file
+Download pre-generated Aria calibration files for manually annotated files from [here](https://drive.google.com/file/d/1Emi-Zcl2uJKmZo9FARpPT-ASHxT8qchj/view?usp=drive_link). Extract all the JSON files and put it under `<gt_output_dir>/aria_calib_json/`.  
 *NOTE: If you choose to follow option 2, please check if the calibration file exists for every take as this list might not be up-to-date.*
 
 ### Step 4: Download hand bounding box file for test data
-Move hand bounding box file([ego_pose_gt_anno_test_public.json](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/ego_pose_gt_anno_test_public.json)) in `<gt_output_dir>/annotation/manual`.  
+Move test split hand bounding box file ([ego_pose_gt_anno_test_public.json](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/ego_pose_gt_anno_test_public.json)) in `<gt_output_dir>/annotation/manual`.  
 The structure of `ego_pose_gt_anno_test_public.json` is:  
 ```
 {
@@ -83,14 +83,16 @@ The structure of `ego_pose_gt_anno_test_public.json` is:
                             Empty if the hand is invisible and not evaluated.  
             "metadata": some metadata for the take and the frame.
         }
+        ...
     }
+    ...
 }
 ```
 
-### Step 5: Prepare annotation JSON files in preparation for training
-Raw Ego-Exo4D 3D annotations are in the world coordinate frame. Here we provide the script to transform it to the egocentric coordinate frame. 
-In this step, we also filter valid 3D annotations by geometry and biomechanical constraints for train/val data, and save it as valide flag in the generated files. 
-We encourage but do not request the users to use it as a data cleanup process.  
+### Step 5: Prepare annotation JSON files for training
+Raw Ego-Exo4D 3D annotations are in the world coordinate frame. Here we provide the script to transform it to the egocentric coordinate frame.   
+In this step, we also filter valid 3D annotations by geometry and biomechanical constraints for train/val data, and save it as a valid flag in the generated files. 
+We encourage but do not require the users to use it as a data cleanup process.  
 
 Default is to create ground truth annotation JSON files for manually annotated data in all splits (`train/val/test`).  
 Use `--anno_type auto` for takes with only auto annotations.
@@ -121,7 +123,9 @@ The structure of for the generated annotation file is:
             the same entries for left hand ...
             "metadata": some metadata for the take and the frame.
         }
+        ...
     }
+    ...
 }
 ```
 
@@ -133,7 +137,7 @@ python3 main.py \
     --ego4d_data_dir <egoexo_output_dir> \
     --gt_output_dir <gt_output_dir>
 ```
-Please refer to [visualization.ipynb](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/visualization.ipynb) to visualize 2D and reprojected annotations on a specific frame. 
+Please refer to [visualization.ipynb](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/visualization.ipynb) to visualize 2D and reprojected 3D annotations on a specific frame. 
 
 ## Notes
 
