@@ -10,7 +10,7 @@ Follow instruction below to
 - `<egoexo_output_dir>`: Directory of the data downloaded by Ego-Exo4D CLI Downloader.
 - `<gt_output_dir>`: Output directory of hand ego pose data, which will be generated later.
 
-### Set up
+## Set up
 Run command below to install necessary packages.
 ```
 pip install -r requirement.txt
@@ -20,17 +20,16 @@ Install [Ego-Exo4D CLI Downloader](https://github.com/facebookresearch/Ego4d/tre
 pip install ego4d --upgrade
 ```
 
-### Step 1: Download Ego-Exo4D data
-Download the data via [Ego-Exo4D CLI Downloader](https://docs.ego-exo4d-data.org/download/) including `annotations`, `metadata`, frame aligned videos and VRS files with the following commands. 
-
-1. Download ego pose related `annotations` and `metadata` for both manual and automatic annotations:
+## Data download and preparation
+### Step 1: Download Ego-Exo4D annotation data
+Download ego pose related `annotations` and `metadata` for both manual and automatic annotations:
 
 ```
 egoexo -o <egoexo_output_dir> --parts annotations metadata ego_pose_pseudo_gt --benchmarks egopose
 ```
 
-2. Download frame aligned videos for only annotated takes.  
-Additionally filter can be applied based on splits and annotation type (see details below). Default is to download data for all manually annotated takes in all splits.
+### Step 2: Download Ego-Exo4D frame aligned videos for annotated takes 
+Additional filters can be applied based on splits and annotation type (see details below). Default is to download data for all manually annotated takes in all splits.
 
 Filter based on:
 - `--splits`: valid option: `train`, `val`, `test`
@@ -46,7 +45,8 @@ python3 scripts/download.py \
     --parts takes
 ```
 
-3. Download Aria camera intrinsics parameters in preparation for image undistortion. We provide two options:
+### Step 3: Download Aria camera intrinsics parameters in preparation for image undistortion.  
+We provide two options:
 - Option 1: download `take_vrs_noimagestream` which is a set of vrs files without image data.  
 - Option 2: skip `take_vrs_noimagestream` download and get pre-generated aria calibration JSON files.  
 
@@ -65,14 +65,13 @@ python3 main.py \
     --gt_output_dir <gt_output_dir>
 ```  
 The generated files should be stored in `<gt_output_dir>/aria_calib_json/`  
-*NOTE: If you choose to follow option 2, please check if the calibration file exists for every take as this list might not be up-to-date.*
 
 #### Option 2: Download Aria calibration JSON file
 Download pre-generated Aria calibration files for manually annotated files from [here](https://drive.google.com/file/d/1Emi-Zcl2uJKmZo9FARpPT-ASHxT8qchj/view?usp=drive_link). Extract all the JSON files and put it under `<gt_output_dir>/aria_calib_json/`.
+*NOTE: If you choose to follow option 2, please check if the calibration file exists for every take as this list might not be up-to-date.*
 
-### Step 2: Prepare annotation JSON files in preparation for training
-#### Test split files
-Put hand bounding box file([ego_pose_gt_anno_test_public.json](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/ego_pose_gt_anno_test_public.json)) in `<gt_output_dir>/annotation/manual`.  
+### Step 4: Download hand bounding box file for test data
+Move hand bounding box file([ego_pose_gt_anno_test_public.json](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/ego_pose_gt_anno_test_public.json)) in `<gt_output_dir>/annotation/manual`.  
 The structure of `ego_pose_gt_anno_test_public.json` is:  
 ```
 {
@@ -88,8 +87,11 @@ The structure of `ego_pose_gt_anno_test_public.json` is:
 }
 ```
 
-#### Train/val split files
-Generate ground truth annotation files for training split. 
+### Step 5: Prepare annotation JSON files in preparation for training
+Raw Ego-Exo4D 3D annotations are in the world coordinate frame. Here we provide the script to transform it to the egocentric coordinate frame. 
+In this step, we also filter valid 3D annotations by geometry and biomechanical constraints for train/val data, and save it as valide flag in the generated files. 
+We encourage but do not request the users to use it as a data cleanup process.  
+
 Default is to create ground truth annotation JSON files for manually annotated data in all splits (`train/val/test`).  
 Use `--anno_type auto` for takes with only auto annotations.
 ```
@@ -101,10 +103,7 @@ python3 main.py \
 
 Two annotation JSON files will be generated:
 - **ego_pose_gt_anno_train_public.json**: includes 2D hand joints coordinates, 3D hand joints coordinates, hand bbox and valid hand joints flag (3d kpts) in all annotation available `train` takes. 
-- **ego_pose_gt_anno_val_public.json**: includes 2D hand joints coordinates, 3D hand joints coordinates, hand bbox and valid hand joints flag (3d kpts) in all annotation available `val` takes. 
-
-In this step, we filtered valid 3D annotations by geometry and biomechanical constraints, and save it in the generated files. 
-We encourage but do not request the users to use it as a data cleanup process.  
+- **ego_pose_gt_anno_val_public.json**: includes 2D hand joints coordinates, 3D hand joints coordinates, hand bbox and valid hand joints flag (3d kpts) in all annotation available `val` takes.
 
 The structure of for the generated annotation file is:  
 ```
@@ -126,8 +125,7 @@ The structure of for the generated annotation file is:
 }
 ```
 
-
-### Step 3: Extract & undistort Aria images
+### Step 6: Extract & undistort Aria images
 Run `main.py` with `steps=raw_image undistorted_image` to first extract Aria raw images to `<gt_output_dir>`, then perform undistortion to get undistorted Aria images. Default is to extract and undistort all manually annotated frames used in all splits (`train/val/test`). Also the image orientation is in landscape view (default), See [here](#landscape-vs-portrait-view) for view orientation explanation.
 ```
 python3 main.py \
