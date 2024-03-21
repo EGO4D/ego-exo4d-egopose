@@ -1,7 +1,7 @@
 # Ego-Exo4D Hand Ego Pose Benchmark Evaluation
 
 Here is an example for ego hand pose model evaluation.  
-For challenge participates, please submit model outputs to [EvalAI challenge](https://eval.ai/web/challenges/challenge-page/2249/overview)
+For challenge participants, please submit model outputs to [EvalAI challenge](https://eval.ai/web/challenges/challenge-page/2249/overview)
 
 ## File requirements
 ### Ground truth annotation JSON file 
