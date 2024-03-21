@@ -1,10 +1,14 @@
 # Ego-Exo4D Hand Ego Pose Benchmark Evaluation
 
-Follow instruction below to perform hand ego pose model performance evaluation.
+Here is an example for ego hand pose model evaluation.  
+For challenge participates, please submit model outputs to [EvalAI challenge](https://eval.ai/web/challenges/challenge-page/2249/overview)
 
-## Requirement
-
-To perform model evaluation, you need to have 1. ground truth annotation JSON file 2. user inference output. The user inference output need to be saved as a single JSON file with specific format:
+## File requirements
+### Ground truth annotation JSON file 
+Ground truth annotation for test split is not released to public. The file structure the same as files generated in 
+[data preparation](https://github.com/EGO4D/ego-exo4d-egopose/tree/main/handpose/data_preparation) step 2. 
+### Model inference results 
+The inference output needs to be saved as a single JSON file with the following format:
 ```
 {
     "<take_uid>": {
@@ -15,8 +19,6 @@ To perform model evaluation, you need to have 1. ground truth annotation JSON fi
     }
 }
 ```
-You can find one sample inference output JSON file from [here](https://drive.google.com/drive/folders/1jmN427e2f1vsOLcTUkiAKVlqJUx5acfS?usp=sharing).
-
 
 ## Evaluation
 
@@ -24,6 +26,5 @@ Evaluate the model performance based on prediction inference output JSON file (w
 ```
 python3 evaluate.py \
     --pred_path <pred_path> \
-    --gt_path <gt_path> \
-    --offset 
+    --gt_path <gt_path> 
 ```
