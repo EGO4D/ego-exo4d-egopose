@@ -27,4 +27,5 @@ Evaluate the model performance based on prediction inference output JSON file (w
 python3 evaluate.py \
     --pred_path <pred_path> \
     --gt_path <gt_path> 
+    --offset
 ```
