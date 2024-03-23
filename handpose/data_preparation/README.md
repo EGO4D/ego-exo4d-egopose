@@ -1,6 +1,10 @@
 # Hand Ego Pose Data Preparation
 Data preparation for hand ego-pose benchmark task in [Ego-Exo4D](https://github.com/facebookresearch/Ego4d/tree/main), [paper](https://arxiv.org/abs/2311.18259), [EvalAI challenge](https://eval.ai/web/challenges/challenge-page/2249/overview).
 
+## TODO
+1. fix the bug of not downloading vrs_no_image for test split
+2. provide a dummy gt for test split for testing and instructions 
+
 ## Getting Started
 Follow instructions below to 
 - Prepare environments
@@ -170,7 +174,6 @@ When generating ground truth annotation and Aria images, the default orientation
 See figure below for landscape view vs. portrait view. 
 
 You can change the Aria images and 2D annotations to *portrait view* by adding `--portrait_view` flag in step 5 and step 6. Please make sure to keep consistent view orientation between annotations and images.  
-See [visualization.ipynb](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/visualization.ipynb) for an example to keep consistency for 3D annotations by rotating Aria camera pose.   
-TODO: add to the script
+See [visualization.ipynb](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/visualization.ipynb) for an example to keep consistency for 3D annotations by rotating 3D annotations.
 
 <img src="assets/landscape_vs_portrait_view.png" width ="700" height="350">
