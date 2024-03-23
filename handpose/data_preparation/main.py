@@ -138,7 +138,7 @@ def extract_aria_img(args):
                 # Load current take's aria video
                 curr_take_video_path = os.path.join(
                     take_video_dir,
-                    take_name,
+                    take_name.split("/")[1],
                     "frame_aligned_videos",
                     f"{ego_aria_cam_name}_214-1.mp4",
                 )
