@@ -52,6 +52,9 @@ def undistort_aria_img(args):
                 curr_aria_calib_json_path = os.path.join(
                     args.gt_output_dir, "aria_calib_json", f"{take_name}.json"
                 )
+                if not os.path.exists(curr_aria_calib_json_path):
+                    print(f"No Aria calib json for {take_name}. Skipped.")
+                    continue
                 aria_rgb_calib = calibration.device_calibration_from_json(
                     curr_aria_calib_json_path
                 ).get_camera_calib("camera-rgb")
