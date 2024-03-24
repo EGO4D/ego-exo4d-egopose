@@ -81,7 +81,7 @@ Download pre-generated Aria calibration files for manually annotated files from 
 *NOTE: If you choose to follow option 2, please check if the calibration file exists for every take as this list might not be up-to-date.*
 
 ### Step 4: Download hand bounding box file for test data
-Move test split hand bounding box file ([ego_pose_gt_anno_test_public.json](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/ego_pose_gt_anno_test_public.json)) 
+Copy test split hand bounding box file ([ego_pose_gt_anno_test_public.json](https://github.com/EGO4D/ego-exo4d-egopose/blob/main/handpose/data_preparation/ego_pose_gt_anno_test_public.json)) 
 in `$gt_output_dir/annotation/manual` (and also `$gt_output_dir/annotation/auto` if using automatically annotated data).  
 The structure of `ego_pose_gt_anno_test_public.json` is:  
 ```
