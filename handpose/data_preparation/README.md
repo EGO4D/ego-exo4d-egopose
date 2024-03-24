@@ -2,8 +2,7 @@
 Data preparation for hand ego-pose benchmark task in [Ego-Exo4D](https://github.com/facebookresearch/Ego4d/tree/main), [paper](https://arxiv.org/abs/2311.18259), [EvalAI challenge](https://eval.ai/web/challenges/challenge-page/2249/overview).
 
 ## TODO
-1. fix the bug of not downloading vrs_no_image for test split
-2. provide a dummy gt for test split for testing and instructions 
+provide a dummy gt for test split for testing and instructions 
 
 ## Getting Started
 Follow instructions below to 
@@ -62,7 +61,6 @@ We provide two options:
 - Option 2: skip `take_vrs_noimagestream` download and get pre-generated aria calibration JSON files.  
 
 #### Option 1: Download `take_vrs_noimagestream`
-******* Bug report: This will not download vrs for test split *******  
 Download `take_vrs_noimagestream` for all annotated takes. Default is to download data for all manually annotated takes in all splits.
 ```
 python3 scripts/download.py \
