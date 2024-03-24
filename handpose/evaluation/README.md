@@ -4,7 +4,8 @@ Here is an example for ego hand pose model evaluation.
 For challenge participants, please submit model outputs to [EvalAI challenge](https://eval.ai/web/challenges/challenge-page/2249/overview)
 We also proved a [dummy ground truth file](https://drive.google.com/file/d/1F20We2nWSWFKIin1z9wQGKUC83RrEUUy/view?usp=sharing) to check the model output format for submission. 
 
-## File requirements### Model inference results 
+## File requirements
+### Model inference results 
 The inference output needs to be saved as a single JSON file with the following format:
 ```
 {
