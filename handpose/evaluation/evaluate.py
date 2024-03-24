@@ -101,7 +101,7 @@ def main(args):
                     )
                     # Get 3D hand joints prediction
                     try:
-                        curr_frame_pred = np.array(pred_anno[take_uid][frame_number][f"{hand_order}_hand"]) * 1000
+                        curr_frame_pred = np.array(pred_anno[take_uid][frame_number][f"{hand_order}_hand_3d"]) * 1000
                         assert curr_frame_pred.shape == (21,3)
                     except (KeyError, AssertionError) as e:
                         print(f"No prediction found for {take_uid} - {frame_number} - {hand_order} hand")
