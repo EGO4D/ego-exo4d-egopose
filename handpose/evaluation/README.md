@@ -14,7 +14,9 @@ The inference output needs to be saved as a single JSON file with the following 
                 "left_hand_3d": [],
                 "right_hand_3d": []
         }
+        ...
     }
+    ...
 }
 ```
 ### Ground truth annotation JSON file 
