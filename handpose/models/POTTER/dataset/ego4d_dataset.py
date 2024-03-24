@@ -98,6 +98,7 @@ class ego4dDataset(Dataset):
         metadata = curr_db["metadata"]
         img_path = os.path.join(
             self.img_dir,
+            "takes",
             f"{metadata['take_name']}",
             f"{metadata['frame_number']:06d}.jpg",
         )
@@ -109,6 +110,8 @@ class ego4dDataset(Dataset):
             (int(self.image_size[0]), int(self.image_size[1])),
             flags=cv2.INTER_LINEAR,
         )
+        # ATTENTION: only to reproduce baseline results.
+        input = cv2.rotate(input, cv2.ROTATE_90_CLOCKWISE)
         # Apply Pytorch transform if needed
         if self.transform:
             input = self.transform(input)

@@ -2,39 +2,28 @@
 Implementation of hand-ego-pose-potter, a 3D hand pose estimation baseline model based on [POTTER](https://github.com/zczcwh/POTTER/tree/main) in [Ego-Exo4D](https://github.com/facebookresearch/Ego4d) hand ego pose benchmark.
 
 
-## Download Data
-
-To perform model inference or training, you need to have 1. ground truth annotation files 2. corresponding undistorted Aria images 3. pretrained model weight. Follow instruction below to download necessary data.
-
-### Step 1: Download ground truth annotation file
-
-Download ground truth annotation file from [here](https://drive.google.com/drive/folders/1F7pz21ejW6J5Eu6Mhhzm9HQ0neFrxrul?usp=sharing) and put it at `<gt_anno_dir>`.  
-comment: if following the data preparation step, the annotation files should be in ...
-
-### Step 2: Download Aria images
-
-Download undistorted Aria images from [here](https://drive.google.com/drive/folders/1R2v-xdiQ919sBGgL_MQZtsgsB4BTxVQl?usp=sharing) and put it at `<aria_img_dir>`. (TODO: add train and val images)  
-
-
-### Step 3: Download model weight
-Download pretrained model weight of hand-ego-pose-potter from [here](https://drive.google.com/drive/folders/1WSvV7wvmYBvFhB5KwK6PRXwV5dpHd9Hf?usp=sharing).
-comment: if following the data preparation step, the images should be in ...
+## Data preparation
+Follow instructions [here](https://github.com/EGO4D/ego-exo4d-egopose/tree/main/handpose/data_preparation) to get:
+- ground truth annotation files in `$gt_output_dir/annotation/manual` or `$gt_output_dir/annotation/auto` if using automatic annotations,
+referred as `gt_anno_dir` below
+- corresponding undistorted Aria images in `$gt_output_dir/image/undistorted`, 
+referred as `aria_img_dir` below
 
 ## Setup
 
-- Follow instructions below to set-up environment for model training and inference.
+- Follow the instructions below to set up the environment for model training and inference.
 ```
 conda create -n potter_hand_pose python=3.9.16 -y
 conda activate potter_hand_pose
 pip install -r requirement.txt
 ```
-- Install `pytorch`. The model is tested with `pytorch==2.1.0` and `torchvision==0.16.0`. 
+- Install [pytorch](https://pytorch.org/get-started/previous-versions/). The model is tested with `pytorch==2.1.0` and `torchvision==0.16.0`. 
 
 
 ## Training
 
 Download POTTER_cls model weights from [here](https://github.com/zczcwh/POTTER/tree/main/image_classification#2-poolattnformer-models-in-paper-we-denote-as-potter_cls). Put all model weight at `${ROOT}/output/ckpt` directory.  
-comment: download model `poolattnformer_s12` and rename it to `cls_s12.pth`
+Specifically, download model `poolattnformer_s12` and rename it to `cls_s12.pth`
 
 Run command below to perform training on manual data with pretrained POTTER_cls weight:
 ```
@@ -46,19 +35,7 @@ If choose to finetuning on manual data with pretrained weight on automatic data,
 
 ## Inference
 
-The model inference output need to be saved as a single JSON file with specific format:
-```
-{
-    "<take_uid>": {
-        "<frame_number>": {
-                "left_hand_3d": [],
-                "right_hand_3d": []     
-        }
-    }
-}
-```
-
-You can also find one sample inference output JSON file from [here](https://drive.google.com/file/d/1t9U3Em_Y5sjTN5_4GZ6S6rnYUNI5L943/view?usp=sharing).
+Download pretrained ([EvalAI baseline](https://eval.ai/web/challenges/challenge-page/2249/overview)) model weight of hand-ego-pose-potter from [here](https://drive.google.com/drive/folders/1WSvV7wvmYBvFhB5KwK6PRXwV5dpHd9Hf?usp=sharing).
 
 Run command below to perform inference of pretrained model on test set, and save the inference output as a single JSON file. It will be stored at `output/inference_output` by default. 
 ```
@@ -67,7 +44,20 @@ python3 inference.py \
     --gt_anno_dir <gt_anno_dir> \
     --aria_img_dir <aria_img_dir>
 ```
-comment: current trained model is with respect to image orientation up-down. Thus generate large error for image with orientation left-right. 
+
+The output format is: 
+```
+{
+    "<take_uid>": {
+        "<frame_number>": {
+                "left_hand_3d": [],
+                "right_hand_3d": []     
+        }
+        ...
+    }
+    ...
+}
+```
 
 ## Note
 For the 21 keypoints annotation in each hand, its index and label are listed as below:
