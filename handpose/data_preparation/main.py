@@ -47,7 +47,7 @@ def undistort_aria_img(args):
                 assert len(take) == 1, f"Take: {take_uid} does not exist"
                 take = take[0]
                 # Get current take's name and aria camera name
-                take_name = take["root_dir"]
+                take_name = take["take_name"]
                 print(f"processing {take_name}")
                 # Get aria calibration model and pinhole camera model
                 curr_aria_calib_json_path = os.path.join(
@@ -138,7 +138,7 @@ def extract_aria_img(args):
                 assert len(take) == 1, f"Take: {take_uid} does not exist"
                 take = take[0]
                 # Get current take's name and aria camera name
-                take_name = take["root_dir"]
+                take_name = take["take_name"]
                 print(f"processing {take_name}")
                 ego_aria_cam_name = get_ego_aria_cam_name(take)
                 # Load current take's aria video
@@ -267,7 +267,7 @@ def create_aria_calib(args):
     # Find uid and take info
     takes = json.load(open(os.path.join(args.ego4d_data_dir, "takes.json")))
     take_to_uid = {
-        each_take["root_dir"]: each_take["take_uid"]
+        each_take["take_name"]: each_take["take_uid"]
         for each_take in takes
         if each_take["take_uid"] in all_local_take_uids
     }
@@ -278,7 +278,7 @@ def create_aria_calib(args):
     for take_name, _ in take_to_uid.items():
         # Get aria name
         capture_name = "_".join(take_name.split("_")[:-1])
-        take = [t for t in takes if t["root_dir"] == take_name]
+        take = [t for t in takes if t["take_name"] == take_name]
         assert len(take) == 1, f"Take: {take_name} can't be found in takes.json"
         take = take[0]
         aria_cam_name = get_ego_aria_cam_name(take)

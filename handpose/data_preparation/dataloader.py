@@ -79,7 +79,7 @@ class ego_pose_anno_loader:
         ]
         # take to uid dict
         take_to_uid = {
-            t["root_dir"]: t["take_uid"]
+            t["take_name"]: t["take_uid"]
             for t in self.takes
             if t["take_uid"] in split_all_local_takes
         }
@@ -260,7 +260,7 @@ class ego_pose_anno_loader:
 
     def load_aria_calib(self, curr_take_name):
         # Find aria names
-        take = [t for t in self.takes if t["root_dir"] == curr_take_name]
+        take = [t for t in self.takes if t["take_name"] == curr_take_name]
         take = take[0]
         aria_cam_name = get_ego_aria_cam_name(take)
         # Load aria calibration model
