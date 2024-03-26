@@ -144,7 +144,7 @@ def extract_aria_img(args):
                 # Load current take's aria video
                 curr_take_video_path = os.path.join(
                     take_video_dir,
-                    take_name.split("/")[1],
+                    take_name,
                     "frame_aligned_videos",
                     f"{ego_aria_cam_name}_214-1.mp4",
                 )
@@ -262,7 +262,7 @@ def create_aria_calib(args):
     all_local_take_uids = list(all_local_take_uids)
     # Create aria calib JSON output directory
     aria_calib_json_output_dir = os.path.join(args.gt_output_dir, "aria_calib_json")
-    os.makedirs(os.path.join(aria_calib_json_output_dir, "takes"), exist_ok=True)
+    os.makedirs(aria_calib_json_output_dir, exist_ok=True)
 
     # Find uid and take info
     takes = json.load(open(os.path.join(args.ego4d_data_dir, "takes.json")))
@@ -277,7 +277,6 @@ def create_aria_calib(args):
     # Export aria calibration to JSON file
     for take_name, _ in take_to_uid.items():
         # Get aria name
-        capture_name = "_".join(take_name.split("_")[:-1])
         take = [t for t in takes if t["take_name"] == take_name]
         assert len(take) == 1, f"Take: {take_name} can't be found in takes.json"
         take = take[0]
@@ -285,7 +284,7 @@ def create_aria_calib(args):
         # 1. Generate aria calib JSON file
         vrs_path = os.path.join(
             args.ego4d_data_dir,
-            # "takes",
+            "takes",
             take_name,
             f"{aria_cam_name}_noimagestream.vrs",
         )

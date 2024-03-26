@@ -74,10 +74,10 @@ python3 main.py \
     --ego4d_data_dir $egoexo_output_dir \
     --gt_output_dir $gt_output_dir
 ```  
-The generated files should be stored in `$gt_output_dir/aria_calib_json/takes`  
+The generated files should be stored in `$gt_output_dir/aria_calib_json/`  
 
 #### Option 2: Download pre-generated Aria calibration JSON file
-Download pre-generated Aria calibration files for manually annotated files from [here](https://drive.google.com/file/d/1Emi-Zcl2uJKmZo9FARpPT-ASHxT8qchj/view?usp=drive_link). Extract all the JSON files and put it under `$gt_output_dir/aria_calib_json/takes`.  
+Download pre-generated Aria calibration files for manually annotated files from [here](https://drive.google.com/file/d/1Emi-Zcl2uJKmZo9FARpPT-ASHxT8qchj/view?usp=drive_link). Extract all the JSON files and put it under `$gt_output_dir/aria_calib_json/`.  
 *NOTE: If you choose to follow option 2, please check if the calibration file exists for every take as this list might not be up-to-date.*
 
 ### Step 4: Download hand bounding box file for test data
