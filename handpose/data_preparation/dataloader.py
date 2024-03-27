@@ -50,10 +50,16 @@ class ego_pose_anno_loader:
 
         # Determine annotation and camera pose directory
         anno_type_dir_dict = {"manual": "annotation", "auto": "automatic"}
-        self.hand_anno_dir = os.path.join(
-            self.dataset_root,
-            f"annotations/ego_pose/{split}/hand",
-            anno_type_dir_dict[self.anno_type],
+        self.hand_anno_dir = (
+            os.path.join(
+                self.dataset_root, "annotations/ego_pose/test/hand/annotation"
+            )
+            if self.split == "test"
+            else os.path.join(
+                self.dataset_root,
+                f"annotations/ego_pose/{split}/hand",
+                anno_type_dir_dict[self.anno_type],
+            )
         )
         self.cam_pose_dir = os.path.join(
             self.dataset_root, f"annotations/ego_pose/{split}/camera_pose"

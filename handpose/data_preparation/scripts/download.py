@@ -1,6 +1,6 @@
 import argparse
-import os
 import json
+import os
 import sys
 
 
@@ -52,29 +52,49 @@ def create_arg_parse():
     return args
 
 
-def main(args):
+def find_annotated_takes(ego4d_data_dir, splits, anno_types):
     # Get all annotated takes
     all_local_take_uids = set()
     anno_type_dir_dict = {"manual": "annotation", "auto": "automatic"}
-
-    for split in args.splits:
+    for split in splits:
+        # For test split, check existing takes with two options
         if split == "test":
-            test_list_file = "ego_pose_gt_anno_test_public.json"
-            test_file = json.load(open(test_list_file))
-            curr_split_take_uids = test_file.keys()
+            test_split_anno_dir = os.path.join(
+                ego4d_data_dir, "annotations/ego_pose/test/hand/annotation"
+            )
+            # Option 1: if existing private test annotation, then find test takes from local directory
+            if (
+                os.path.exists(test_split_anno_dir)
+                and len(os.listdir(test_split_anno_dir)) > 0
+            ):
+                curr_split_take_uids = [
+                    k.split(".")[0] for k in os.listdir(test_split_anno_dir)
+                ]
+            # Option 2: otherwise, load test takes from public test gt-anno
+            else:
+                test_list_file = "ego_pose_gt_anno_test_public.json"
+                test_file = json.load(open(test_list_file))
+                curr_split_take_uids = test_file.keys()
             all_local_take_uids.update(curr_split_take_uids)
         else:
-            for anno_type_ in args.anno_types:
+            # For all other splits, find available takes from local directory
+            for anno_type_ in anno_types:
                 anno_type = anno_type_dir_dict[anno_type_]
                 curr_split_anno_dir = os.path.join(
-                    args.ego4d_data_dir, f"annotations/ego_pose/{split}/hand", anno_type
+                    ego4d_data_dir, f"annotations/ego_pose/{split}/hand", anno_type
                 )
                 if os.path.exists(curr_split_anno_dir):
                     curr_split_take_uids = [
                         k.split(".")[0] for k in os.listdir(curr_split_anno_dir)
                     ]
                     all_local_take_uids.update(curr_split_take_uids)
-    all_local_take_uids = list(all_local_take_uids)
+    return list(all_local_take_uids)
+
+
+def main(args):
+    all_local_take_uids = find_annotated_takes(
+        args.ego4d_data_dir, args.splits, args.anno_types
+    )
     assert len(all_local_take_uids) > 0, "No takes find."
     cmd_uids = " ".join(all_local_take_uids)
 

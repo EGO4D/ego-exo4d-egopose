@@ -7,6 +7,7 @@ import numpy as np
 from dataloader import ego_pose_anno_loader
 from PIL import Image
 from projectaria_tools.core import calibration
+from scripts.download import find_annotated_takes
 from tqdm import tqdm
 from utils.config import create_arg_parse
 from utils.reader import PyAvReader
@@ -240,28 +241,10 @@ def create_gt_anno(args):
 
 
 def create_aria_calib(args):
-    # Find all local annotation takes
-    all_local_take_uids = set()
-    anno_type_dir_dict = {"manual": "annotation", "auto": "automatic"}
-
-    for split in args.splits:
-        if split == "test":
-            test_list_file = "ego_pose_gt_anno_test_public.json"
-            test_file = json.load(open(test_list_file))
-            curr_split_take_uids = test_file.keys()
-            all_local_take_uids.update(curr_split_take_uids)
-        else:
-            for anno_type_ in args.anno_types:
-                anno_type = anno_type_dir_dict[anno_type_]
-                curr_split_anno_dir = os.path.join(
-                    args.ego4d_data_dir, f"annotations/ego_pose/{split}/hand", anno_type
-                )
-                if os.path.exists(curr_split_anno_dir):
-                    curr_split_take_uids = [
-                        k.split(".")[0] for k in os.listdir(curr_split_anno_dir)
-                    ]
-                    all_local_take_uids.update(curr_split_take_uids)
-    all_local_take_uids = list(all_local_take_uids)
+    # Get all annotated takes
+    all_local_take_uids = find_annotated_takes(
+        args.ego4d_data_dir, args.splits, args.anno_types
+    )
     # Create aria calib JSON output directory
     aria_calib_json_output_dir = os.path.join(args.gt_output_dir, "aria_calib_json")
     os.makedirs(aria_calib_json_output_dir, exist_ok=True)
