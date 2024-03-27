@@ -34,11 +34,12 @@ def undistort_aria_img(args):
                 continue
             gt_anno = json.load(open(gt_anno_path))
             # Input and output root path
+            img_view_prefix = "image_portrait_view" if args.portrait_view else "image"
             dist_img_root = os.path.join(
-                args.gt_output_dir, "image", "distorted", split
+                args.gt_output_dir, img_view_prefix, "distorted", split
             )
             undist_img_root = os.path.join(
-                args.gt_output_dir, "image", "undistorted", split
+                args.gt_output_dir, img_view_prefix, "undistorted", split
             )
             # Extract frames with annotations for all takes
             for take_uid, take_anno in gt_anno.items():
@@ -75,34 +76,34 @@ def undistort_aria_img(args):
                     curr_undist_img_path = os.path.join(
                         curr_undist_img_dir, f"{f_idx:06d}.jpg"
                     )
-                    # comment it out for regenerating images for different orientation
-                    # if not os.path.exists(curr_undist_img_path):
-                    # Load in distorted images
-                    curr_dist_img_path = os.path.join(
-                        curr_dist_img_dir, f"{f_idx:06d}.jpg"
-                    )
-                    assert os.path.exists(
-                        curr_dist_img_path
-                    ), f"No distorted images found at {curr_dist_img_path}. Please extract images with steps=raw_images first."
-                    curr_dist_image = np.array(Image.open(curr_dist_img_path))
-                    curr_dist_image = (
-                        cv2.rotate(curr_dist_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                        if args.portrait_view
-                        else curr_dist_image
-                    )
-                    # Undistortion
-                    undistorted_image = calibration.distort_by_calibration(
-                        curr_dist_image, pinhole, aria_rgb_calib
-                    )
-                    undistorted_image = (
-                        cv2.rotate(undistorted_image, cv2.ROTATE_90_CLOCKWISE)
-                        if args.portrait_view
-                        else undistorted_image
-                    )
-                    # Save undistorted image
-                    assert cv2.imwrite(
-                        curr_undist_img_path, undistorted_image[:, :, ::-1]
-                    ), curr_undist_img_path
+                    # Avoid repetitive generation by checking file existence
+                    if not os.path.exists(curr_undist_img_path):
+                        # Load in distorted images
+                        curr_dist_img_path = os.path.join(
+                            curr_dist_img_dir, f"{f_idx:06d}.jpg"
+                        )
+                        assert os.path.exists(
+                            curr_dist_img_path
+                        ), f"No distorted images found at {curr_dist_img_path}. Please extract images with steps=raw_images first."
+                        curr_dist_image = np.array(Image.open(curr_dist_img_path))
+                        curr_dist_image = (
+                            cv2.rotate(curr_dist_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                            if args.portrait_view
+                            else curr_dist_image
+                        )
+                        # Undistortion
+                        undistorted_image = calibration.distort_by_calibration(
+                            curr_dist_image, pinhole, aria_rgb_calib
+                        )
+                        undistorted_image = (
+                            cv2.rotate(undistorted_image, cv2.ROTATE_90_CLOCKWISE)
+                            if args.portrait_view
+                            else undistorted_image
+                        )
+                        # Save undistorted image
+                        assert cv2.imwrite(
+                            curr_undist_img_path, undistorted_image[:, :, ::-1]
+                        ), curr_undist_img_path
 
 
 def extract_aria_img(args):
@@ -127,8 +128,9 @@ def extract_aria_img(args):
             gt_anno = json.load(open(gt_anno_path))
             # Input and output root path
             take_video_dir = os.path.join(args.ego4d_data_dir, "takes")
+            img_view_prefix = "image_portrait_view" if args.portrait_view else "image"
             img_output_root = os.path.join(
-                args.gt_output_dir, "image", "distorted", split
+                args.gt_output_dir, img_view_prefix, "distorted", split
             )
             os.makedirs(img_output_root, exist_ok=True)
             # Extract frames with annotations for all takes
@@ -169,12 +171,12 @@ def extract_aria_img(args):
                     out_path = os.path.join(
                         curr_take_img_output_path, f"{f_idx:06d}.jpg"
                     )
-                    # comment it out for regenerating images for different orientation
-                    # if not os.path.exists(out_path):
-                    frame = reader[f_idx][0].cpu().numpy()
-                    frame = frame if args.portrait_view else np.rot90(frame)
-                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                    assert cv2.imwrite(out_path, frame), out_path
+                    # Avoid repetitive generation by checking file existence
+                    if not os.path.exists(out_path):
+                        frame = reader[f_idx][0].cpu().numpy()
+                        frame = frame if args.portrait_view else np.rot90(frame)
+                        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                        assert cv2.imwrite(out_path, frame), out_path
 
 
 def save_test_gt_anno(output_dir, gt_anno_private):
