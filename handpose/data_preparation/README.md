@@ -99,6 +99,7 @@ The structure of `ego_pose_gt_anno_test_public.json` is:
     ...
 }
 ```
+Note that only the takes/frames/hands with hand bounding boxes provided are used to evaluate the method. 
 
 ### Step 5: Prepare annotation JSON files for training
 Raw Ego-Exo4D 3D annotations are in the world coordinate frame. Here we provide the script to transform it to the egocentric coordinate frame.   
