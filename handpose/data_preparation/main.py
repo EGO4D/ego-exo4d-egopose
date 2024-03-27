@@ -27,7 +27,7 @@ def undistort_aria_img(args):
                 anno_type,
                 f"ego_pose_gt_anno_{split}_public.json",
             )
-            # TODO: test split
+            # Check gt-anno file existence
             if not os.path.exists(gt_anno_path):
                 print(
                     f"[Warning] Undistortion of aria raw image fails for split={split}({anno_type}). Invalid path: {gt_anno_path}. Skipped for now."
@@ -43,14 +43,15 @@ def undistort_aria_img(args):
                 args.gt_output_dir, img_view_prefix, "undistorted", split
             )
             # Extract frames with annotations for all takes
-            for take_uid, take_anno in gt_anno.items():
+            print("Undisorting Aria images...")
+            for i, (take_uid, take_anno) in enumerate(gt_anno.items()):
                 # Get current take's metadata
                 take = [t for t in takes if t["take_uid"] == take_uid]
                 assert len(take) == 1, f"Take: {take_uid} does not exist"
                 take = take[0]
                 # Get current take's name and aria camera name
                 take_name = take["take_name"]
-                print(f"processing {take_name}")
+                print(f"[{i}/{len(gt_anno)}] processing {take_name}")
                 # Get aria calibration model and pinhole camera model
                 curr_aria_calib_json_path = os.path.join(
                     args.gt_output_dir, "aria_calib_json", f"{take_name}.json"
@@ -120,7 +121,7 @@ def extract_aria_img(args):
                 anno_type,
                 f"ego_pose_gt_anno_{split}_public.json",
             )
-            # TODO: test split
+            # Check gt-anno file existence
             if not os.path.exists(gt_anno_path):
                 print(
                     f"[Warning] Extraction of aria raw image fails for split={split}({anno_type}). Invalid path: {gt_anno_path}. Skipped for now."
@@ -135,14 +136,15 @@ def extract_aria_img(args):
             )
             os.makedirs(img_output_root, exist_ok=True)
             # Extract frames with annotations for all takes
-            for take_uid, take_anno in gt_anno.items():
+            print("Extracting Aria images...")
+            for i, (take_uid, take_anno) in enumerate(gt_anno.items()):
                 # Get current take's metadata
                 take = [t for t in takes if t["take_uid"] == take_uid]
                 assert len(take) == 1, f"Take: {take_uid} does not exist"
                 take = take[0]
                 # Get current take's name and aria camera name
                 take_name = take["take_name"]
-                print(f"processing {take_name}")
+                print(f"[{i}/{len(gt_anno)}] processing {take_name}")
                 ego_aria_cam_name = get_ego_aria_cam_name(take)
                 # Load current take's aria video
                 curr_take_video_path = os.path.join(
@@ -213,6 +215,7 @@ def create_gt_anno(args):
     - private: has GT 3D joints and valid flag information, used for server
     to evaluate model performance
     """
+    print("Generating ground truth annotation files...")
     for anno_type in args.anno_types:
         for split in args.splits:
             # Get ground truth annotation
@@ -260,7 +263,8 @@ def create_aria_calib(args):
         take_to_uid
     ), "Some annotation take doesn't have corresponding info in takes.json"
     # Export aria calibration to JSON file
-    for take_name, _ in take_to_uid.items():
+    print("Generating aria calibration JSON file...")
+    for take_name, _ in tqdm(take_to_uid.items()):
         # Get aria name
         take = [t for t in takes if t["take_name"] == take_name]
         assert len(take) == 1, f"Take: {take_name} can't be found in takes.json"
@@ -271,7 +275,7 @@ def create_aria_calib(args):
             args.ego4d_data_dir,
             "takes",
             take_name,
-            f"{aria_cam_name}_noimagestream.vrs",
+            f"{aria_cam_name}_noimagestreams.vrs",
         )
         if not os.path.exists(vrs_path):
             print(

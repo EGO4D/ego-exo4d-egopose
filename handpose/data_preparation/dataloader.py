@@ -107,7 +107,7 @@ class ego_pose_anno_loader:
         ]
         comm_take_w_cam_pose = list(set(common_take_uid) & set(available_cam_pose_uid))
         print(
-            f"Trying to use {len(comm_take_w_cam_pose)} takes in {self.split} ({self.anno_type}) dataset"
+            f"Find {len(comm_take_w_cam_pose)} takes in {self.split} ({self.anno_type}) dataset. Start data processing..."
         )
 
         # Iterate through all takes from annotation directory and check
