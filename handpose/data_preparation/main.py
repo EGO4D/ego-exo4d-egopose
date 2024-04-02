@@ -51,7 +51,7 @@ def undistort_aria_img(args):
                 take = take[0]
                 # Get current take's name and aria camera name
                 take_name = take["take_name"]
-                print(f"[{i}/{len(gt_anno)}] processing {take_name}")
+                print(f"[{i+1}/{len(gt_anno)}] processing {take_name}")
                 # Get aria calibration model and pinhole camera model
                 curr_aria_calib_json_path = os.path.join(
                     args.gt_output_dir, "aria_calib_json", f"{take_name}.json"
@@ -144,7 +144,7 @@ def extract_aria_img(args):
                 take = take[0]
                 # Get current take's name and aria camera name
                 take_name = take["take_name"]
-                print(f"[{i}/{len(gt_anno)}] processing {take_name}")
+                print(f"[{i+1}/{len(gt_anno)}] processing {take_name}")
                 ego_aria_cam_name = get_ego_aria_cam_name(take)
                 # Load current take's aria video
                 curr_take_video_path = os.path.join(
@@ -218,6 +218,9 @@ def create_gt_anno(args):
     print("Generating ground truth annotation files...")
     for anno_type in args.anno_types:
         for split in args.splits:
+            # For test split, only save manual annotation
+            if split == "test" and anno_type == "auto":
+                print("[Warning] No test gt-anno will be generated on auto data. Skipped for now.")
             # Get ground truth annotation
             gt_anno = ego_pose_anno_loader(args, split, anno_type)
             gt_anno_output_dir = os.path.join(
