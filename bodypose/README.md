@@ -41,8 +41,9 @@ Modify the corresponding training option file at `options/test_egoexo.json`. Thi
 - **Inference command**:
 
     ```bash
-    cd data 
-    unzip dummy_test.zip 
+    cd data
+    unzip dummy_test.zip
+    cd ..
     python inference.py 
     ```
 Modify the corresponding training option file at `options/inference_egoexo.json`. The inference will copy the format of the `dummy_test.json` file and will be stored in `results/EgoExo4D/inference/test_pred.json` by default. 
