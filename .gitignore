@@ -1,2 +1,15 @@
 # Jupyter Notebook
 .ipynb_checkpoints/
+**/support_data/**/*
+**/*results*
+*.pkl
+**/__pycache__
+**/model_zoo/*
+**/wandb/*
+**/*.tar*
+**/*.pt*
+tb_*/**
+**/*.jpg
+.vsco*
+**/vis/*
+**/*DEBUG*

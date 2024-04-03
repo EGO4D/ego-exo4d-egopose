@@ -1,0 +1,64 @@
+{
+    "task": "EgoExo4D"  
+    , "model": "egoexo" 
+    , "gpu_ids": [0]
+  
+    , "merge_bn": true               
+    , "merge_bn_startpoint": 400000  
+  
+    , "path": {
+      "root": "results"             //path to store results
+      , "pretrained_netG": "./results/EgoExo4D/models/100000_G.pth"   // path of pretrained model
+    }
+    , "support_dir": "support_data/"
+    , "datasets": {
+
+       "test": {
+        "name": "test_dataset"            
+        , "dataset_type": "egoexo_inference"         
+        , "dataloader_batch_size": 1     
+        , "num_input": 1                  
+        , "window_size": 20
+        , "single_joint":true
+        , "use_aria":true
+        , "split": "test"
+        ,"use_pseudo":false //Flag to use pseudo-groundtruth annotations for training.
+        ,"coord": null //null for per-frame normalization, "aria" for first-frame normalization, "global" for global coordinates
+        ,"root": "~/Ego-Exo4D/" //ADD PATH TO EGO-EXO4D ANNOTATIONS
+        ,"dummy_json_path":"./data/dummy_test.json" //Path to dummy_test file
+      }
+    }
+  
+    , "netG": {
+      "net_type": "EgoExo4D" 
+      , "num_layer": 3
+      , "input_dim": 3        // input channel number # 36
+      , "output_dim": 132       // ouput channel number   #132
+      , "embed_dim": 256          // channel number of linear embedding for transformer
+      , "nhead": 8          // 
+      , "init_type": "kaiming_normal"         // "orthogonal" | "normal" | "uniform" | "xavier_normal" | "xavier_uniform" | "kaiming_normal" | "kaiming_uniform"
+      , "init_bn_type": "uniform"         // "uniform" | "constant"
+      , "init_gain": 0.2
+    }
+  
+    , "train": {
+      "G_lossfn_type": "l1"               // "l1" preferred | "l2sum" | "l2" | "ssim" 
+      , "G_lossfn_weight": 1.0            // default
+  
+      , "G_optimizer_type": "adam"        // fixed, adam is enough
+      , "G_optimizer_lr": 1e-4           // learning rate
+      , "G_optimizer_clipgrad": null      // unused
+  
+      , "G_scheduler_type": "MultiStepLR" // "MultiStepLR" is enough
+      , "G_scheduler_milestones": [60000, 120000, 180000, 240000, 300000, 360000]
+      , "G_scheduler_gamma": 0.5
+  
+      , "G_regularizer_orthstep": null    // unused
+      , "G_regularizer_clipstep": null    // unused
+  
+      , "checkpoint_test": 1          // for testing
+      , "checkpoint_save": 10000           // for saving model
+      , "checkpoint_print": 500          // for print
+    }
+  }
+  
