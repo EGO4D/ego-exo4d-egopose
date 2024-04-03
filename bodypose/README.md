@@ -52,7 +52,11 @@ Download pretrained [EvalAI baseline](https://eval.ai/web/challenges/challenge-p
 
 There are three options for the frame of reference used in this baseline approach, you can select which frame of reference to use in the options files for training and testing. The default one is using the positions in the reference frame of the camera at each timeframe `coord: null`. The second option is using the positions in the reference frame of the first frame of the camera (this option will show relative movement) `coord: aria`. The third option is using the positions directly in the global reference frame  (this option will also show relative movement)`coord: global`. 
 
-Note that the EvalAI evaluation submission requires the predicted 3D positions for each joint to be in the global reference framework. This baseline outputs by default the positions in the reference frame of the camera at each timeframe, for converting the predicted position into the global reference frame run `global_coordinates.py --root $path_to_egoexo_annotations --pred $path_to_json_file_to_convert ` and you will obtain a `test_pred_global.json` file that can be submitted to the EvalAI server. 
+Note that the EvalAI evaluation submission requires the predicted 3D positions for each joint to be in the global reference framework. This baseline outputs by default the positions in the reference frame of the camera at each timeframe, for converting the predicted position into the global reference frame run 
+```
+global_coordinates.py --root $path_to_egoexo_annotations --pred $path_to_json_file_to_convert
+```
+ and you will obtain a `test_pred_global.json` file that can be submitted to the EvalAI server. 
 
 ## Acknowledgments
 Cite [Ego-Exo4D](https://arxiv.org/abs/2311.18259) if you are using this code
