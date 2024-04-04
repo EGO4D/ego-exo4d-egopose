@@ -22,7 +22,6 @@ def train(
     criterion,
     optimizer,
     epoch,
-    output_dir,
     device,
     logger,
     writer_dict,
@@ -72,7 +71,7 @@ def train(
 
 
 def validate(
-    config, val_loader, model, criterion, output_dir, device, logger, writer_dict
+    val_loader, model, criterion, device, logger, writer_dict
 ):
     loss_3d = AverageMeter()
 
@@ -96,8 +95,8 @@ def validate(
 
         # Log info
         msg = (
-            "Test: [{0}/{1}]\t"
-            "3D Loss {loss_3d.val:.5f} ({loss_3d.avg:.5f})".format(
+            "Val: [{0}/{1}]\t"
+            "3D Loss {loss_3d.avg:.5f}".format(
                 i + 1, len(val_loader), loss_3d=loss_3d
             )
         )
@@ -172,7 +171,7 @@ def main(args):
     )
     logger.info(f"Loaded ground truth annotation from {args.gt_anno_dir}")
     logger.info(
-        f"Number of images: Train: {len(train_dataset)}\t Val: {len(valid_dataset)}"
+        f"Number of annotation(s): Train: {len(train_dataset)}\t Val: {len(valid_dataset)}"
     )
     logger.info(
         f"Learning rate: {cfg.TRAIN.LR} || Batch size: Train:{cfg.TRAIN.BATCH_SIZE}\t Val: {cfg.TEST.BATCH_SIZE}"
@@ -190,7 +189,6 @@ def main(args):
             criterion,
             optimizer,
             epoch,
-            final_output_dir,
             device,
             logger,
             writer_dict,
@@ -198,11 +196,9 @@ def main(args):
 
         # evaluate on validation set
         val_loss = validate(
-            cfg,
             valid_loader,
             model,
             criterion,
-            final_output_dir,
             device,
             logger,
             writer_dict,
