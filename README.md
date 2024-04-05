@@ -1,86 +1,75 @@
-# MeshTransformer ✨
+Inference by 
 
-This is our research code of [End-to-End Human Pose and Mesh Reconstruction with Transformers](https://arxiv.org/abs/2012.09760). 
+# Setup the environment
 
-MEsh TRansfOrmer is a simple yet effective transformer-based method for human pose and mesh reconsruction from an input image. In this repository, we provide our research code for training and testing our proposed method for the following tasks:
+### System
+- Ubuntu 20.04
+- CUDA 10.1
+- Python 3.7
+- Pytorch 1.4
+- torchvision
 
-- Human pose and mesh reconstruction
-- Hand pose and mesh reconstruction
+### Setup METRO with Conda
 
- <img src="docs/metro-overview.png" width="650"> 
+```bash
+git clone --recursive https://github.com/microsoft/MeshTransformer.git
+cd MeshTransformer
 
+conda create --name metro-hand python=3.7
+conda activate metro-hand
 
- <img src="docs/example_keli.gif" width="200"> <img src="docs/example_lijuanw.gif" width="200"> <img src="docs/example_zliu.gif" width="200"> 
+# Install Pytorch
+# conda install pytorch==1.4.0 torchvision==0.5.0 cudatoolkit=10.1 -c pytorch
+conda install pytorch==1.4.0 cudatoolkit=10.1 -c pytorch
+pip install torch==1.4.0 torchvision==0.5.0
 
+# Install METRO
+python setup.py build develop
 
-## Installation
-Check [INSTALL.md](docs/INSTALL.md) for installation instructions.
+# Install requirements
+pip install -r requirements.txt
 
-## Model Zoo and Download
-Please download our pre-trained models and other relevant files that are important to run our code. 
+# Install manopth
+pip install ./manopth/.
 
-Check [DOWNLOAD.md](docs/DOWNLOAD.md) for details. 
-
-
-## Quick demo
-We provide demo codes to run end-to-end inference on the test images.
-
-Check [DEMO.md](docs/DEMO.md) for details.
-
-
-## Experiments
-We provide python codes for training and evaluation.
-
-Check [EXP.md](docs/EXP.md) for details.
-
-## Contributing 
-
-We welcome contributions and suggestions. Please check [CONTRIBUTE](docs/CONTRIBUTE.md) and [CODE_OF_CONDUCT](docs/CODE_OF_CONDUCT.md) for details. 
-
-
-## Citations
-If you find our work useful in your research, please consider citing:
-
-```bibtex
-@inproceedings{lin2021end-to-end,
-author = {Lin, Kevin and Wang, Lijuan and Liu, Zicheng},
-title = {End-to-End Human Pose and Mesh Reconstruction with Transformers},
-booktitle = {CVPR},
-year = {2021},
-}
+# Install pytorch3d-0.6.2 and libzhifan (for visualisation purpose)
+# Note make sure gcc and g++ version are v9, do export CC=gcc-9 and export CXX=g++-9 if necessary
+git clone --depth 1 --branch v0.6.2 git@github.com:facebookresearch/pytorch3d.git thirdparty/pytorch3d
+pip install ./thirdparty/pytorch3d
+pip install ./thirdparty/libzhifan
 ```
 
 
-## License
+### Downloading the weights (SMPL, MANO, METRO)
 
-Our research code is released under the MIT license. See [LICENSE](LICENSE) for details. 
+- Download `basicModel_neutral_lbs_10_207_0_v1.0.0.pkl` from [SMPLify](http://smplify.is.tue.mpg.de/), and place it at `${REPO_DIR}/metro/modeling/data`.
+- Download `MANO_RIGHT.pkl` from [MANO](https://mano.is.tue.mpg.de/), and place it at `${REPO_DIR}/metro/modeling/data`.
+- Download METRO hand network weights into `$REPO_DIR/models/metro_release/metro_hand_state_dict.bin`
+- Model config into `$REPO_DIR/models/hrnet/cls_hrnet_w64_sgd_lr5e-2_wd1e-4_bs32_x100.yaml`
 
-We use submodules from third parties, such as [huggingface/transformers](https://github.com/huggingface/transformers) and [hassony2/manopth](https://github.com/hassony2/manopth). Please see [NOTICE](NOTICE.md) for details. 
+# Run the method
+Here we provide the script to run METRO on EgoExo4D benchmark. 
+Note that the model is not trained on the dataset. The scripts provided are for inference only. 
+## Data preparation
+Follow instructions [here](https://github.com/EGO4D/ego-exo4d-egopose/tree/main/handpose/data_preparation) to get:
+- ground truth annotation files in `$gt_output_dir/annotation/manual` or `$gt_output_dir/annotation/auto` if using automatic annotations,
+referred as `gt_anno_dir` below
+- corresponding undistorted Aria images in `$gt_output_dir/image/undistorted`, 
+referred as `aria_img_dir` below
 
-We note that any use of SMPL models and MANO models are subject to **Software Copyright License for non-commercial scientific research purposes**. See [SMPL-Model License](https://smpl.is.tue.mpg.de/modellicense) and [MANO License](https://mano.is.tue.mpg.de/license) for details.
+## Crop and save output images
 
+METRO takes as input images crops centered at the hand, hence we cache the images.
+```bash
+python hand_crop.py --gt_output_dir $gt_output_dir --storage_dir $output_folder
+```
 
+## Run MeshTransformer
 
-## Acknowledgments
+Finally
+```
+python ./metro/tools/end2end_inference_handmesh_egopose.py --resume_checkpoint ./models/metro_release/metro_hand_state_dict.bin --gt_output_dir $gt_output_dir --storage_dir $output_folder
+```
 
-Our implementation and experiments are built on top of open-source GitHub repositories. We thank all the authors who made their code public, which tremendously accelerates our project progress. If you find these works helpful, please consider citing them as well.
-
-[huggingface/transformers](https://github.com/huggingface/transformers) 
-
-[HRNet/HRNet-Image-Classification](https://github.com/HRNet/HRNet-Image-Classification) 
-
-[nkolot/GraphCMR](https://github.com/nkolot/GraphCMR) 
-
-[akanazawa/hmr](https://github.com/akanazawa/hmr) 
-
-[MandyMo/pytorch_HMR](https://github.com/MandyMo/pytorch_HMR) 
-
-[hassony2/manopth](https://github.com/hassony2/manopth) 
-
-[hongsukchoi/Pose2Mesh_RELEASE](https://github.com/hongsukchoi/Pose2Mesh_RELEASE) 
-
-[mks0601/I2L-MeshNet_RELEASE](https://github.com/mks0601/I2L-MeshNet_RELEASE) 
-
-[open-mmlab/mmdetection](https://github.com/open-mmlab/mmdetection) 
-
-
+This saves the result into `$output_folder/results_gt_bbox/{rends, pred_3ds, pred_2ds}`, 
+and corresponding result json file in `$output_folder/results_gt_bbox/metro_inference.json`

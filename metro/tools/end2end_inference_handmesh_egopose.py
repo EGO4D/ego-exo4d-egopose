@@ -108,6 +108,7 @@ def run_inference(image_list, _metro_network, mano, renderer, mesh_sampler, outp
     # switch to evaluate mode
     _metro_network.eval()
 
+    output = {}
     for img_name in tqdm.tqdm(image_list, total=len(image_list)):
         image_file = os.path.join(frames_root, img_name)
         side = 'left' if 'left' in img_name else 'right'
@@ -157,11 +158,36 @@ def run_inference(image_list, _metro_network, mano, renderer, mesh_sampler, outp
         out_2d_path = os.path.join(out_2d_dir, os.path.basename(image_file).replace('jpg', 'pth'))
         torch.save(pred_2d_joints_from_mesh, out_2d_path)
 
-    return
+        """ Save 3d predictions to dict"""
+        hand_side = img_name.split("_")[0]
+        frame = str(int(img_name.split("_")[1][:-4]))
+        if frame not in output.keys():
+            output[frame] = {}
+        output[frame][hand_side+"_hand_3d"] = pred_3d_joints_from_mesh[0].cpu().detach().numpy().tolist()
+
+    return output
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    #########################################################
+    # Data path
+    #########################################################
+    parser.add_argument(
+        "--storage_dir",
+        type=str,
+        nargs="+",
+        default="/media/shan/Volume2/egoexo-challenge-03/metro_output",
+        help="directory to save the output results",
+    )
+
+    parser.add_argument(
+        "--gt_output_dir",
+        type=str,
+        default=None,
+        help="Directory to store preprocessed ground truth annotation JSON file",
+        required=True,
+    )
     #########################################################
     # Data related arguments
     #########################################################
@@ -321,15 +347,19 @@ def main(args):
     _metro_network.to(args.device)
     logger.info("Run inference")
 
-    uid = args.uid
-    assert uid is not None
-    # df = pd.read_csv(f'./egopose_outputs/dets/{uid}.csv')
-    frames_root = os.path.join('./egopose_storage/handcrops/', uid)
-    image_list = sorted(os.listdir(frames_root))
-    output_dir = f'./egopose_storage/results/{uid}/'
-    run_inference(image_list, _metro_network, mano_model, renderer, mesh_sampler, output_dir=output_dir, frames_root=frames_root)
+    output = {}
+    uids = os.listdir(os.path.join(args.storage_dir, "handcrops_gt_bbox"))
+    for uid in uids:
+        frames_root = os.path.join(args.storage_dir, "handcrops_gt_bbox", uid)
+        image_list = sorted(os.listdir(frames_root))
+        output_dir = os.path.join(args.storage_dir, "results_gt_bbox", uid)
+        os.makedirs(output_dir, exist_ok=True)
+        output_take = run_inference(image_list, _metro_network, mano_model, renderer, mesh_sampler, output_dir=output_dir, frames_root=frames_root)
+        output[frames_root.split("/")[-1]] = output_take
+    with open(os.path.join(args.storage_dir, "results_gt_bbox", "metro_inference.json"), "w") as f:
+        json.dump(output, f)
 
 if __name__ == "__main__":
+
     args = parse_args()
-    args.uid = '98f58f0f-53d6-4e41-bf41-d8d74ccbc37c'
     main(args)

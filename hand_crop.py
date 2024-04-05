@@ -1,30 +1,54 @@
 """ Initialize Hand crop regions for METRO
 """
 
+import argparse
 import numpy as np
 import os
 import os.path as osp
-import tqdm
 import torch
 import PIL
 from PIL import Image
 import torchvision.transforms.functional as F
 from torchvision import transforms
-import pandas as pd
+import json
+import cv2
 
-from libzhifan import io
 from libzhifan.odlib import xyxy_to_xywh, xywh_to_xyxy
 from libzhifan import odlib
 odlib.setup(order='xywh', norm=True)
 
-
 HOCROP_SIZE = 256
+
+def arg_parse():
+    parser = argparse.ArgumentParser("Ego-pose baseline model dataset preparation")
+
+    parser.add_argument(
+        "--storage_dir",
+        type=str,
+        nargs="+",
+        default="/media/shan/Volume2/egoexo-challenge-03/metro_output",
+        help="directory to save the output results",
+    )
+
+    parser.add_argument(
+        "--gt_output_dir",
+        type=str,
+        default=None,
+        help="Directory to store preprocessed ground truth annotation JSON file",
+        required=True,
+    )
+
+    parser.add_argument("--hand_crop_size", type=int, default=256)
+    args = parser.parse_args()
+
+    return args
+
 
 def square_bbox(bbox, pad=0):
     """
     Args:
         bbox: (N, 4) xyxy
-        pad: pad ratio
+        pad: args = parser.parse_args()pad ratio
 
     Returns:
         bbox: (N, 4) xyxy
@@ -80,7 +104,7 @@ def square_expand_box(box1, box2):
     else:
         raise ValueError("box1 and box2 cannot be both None")
 
-    HOCROP_EXPAND_RATIO = 0.4
+    HOCROP_EXPAND_RATIO = 0.0
     box_squared = square_bbox_xywh(bound_box[None], pad_ratio=HOCROP_EXPAND_RATIO)[0]
     return box_squared
 
@@ -142,26 +166,43 @@ def update_box(crop_box, box, out_size=HOCROP_SIZE):
 def row2xyxy(r):
     return np.float32([r['x0'], r['y0'], r['x1'], r['y1']])
 
-def run_hand_crops(uid):
-    storage_dir = './egopose_storage'
-    df = pd.read_csv(f'{storage_dir}/dets/{uid}.csv')
-    img_fmt = f'{storage_dir}/frames/{uid}/{{img_name}}'
-    handcrop_seqs_dir = f'{storage_dir}/handcrops/{uid}'
-    os.makedirs(handcrop_seqs_dir, exist_ok=True)
+def run_hand_crops(bbox, args):
 
-    for i, row in tqdm.tqdm(df.iterrows(), total=len(df)):
-        img_name = row.img_name
-        lr = row.lr
-        hand_box = xyxy_to_xywh(row2xyxy(row))
-        box_squared = square_expand_box(hand_box, box2=None)
-        img_path = img_fmt.format(img_name=img_name)
-        image = Image.open(img_path)
-        handcrop = crop_resize(image, box_squared, HOCROP_SIZE)
-        side = 'left' if lr == 0 else 'right'
-        frame_name = f'{side}_{img_name}'
-        handcrop.save(osp.join(handcrop_seqs_dir, frame_name))
+    storage_dir = args.storage_dir
+    for bbox_take in bbox.keys():
+        take_uid = bbox_take
+        handcrop_seqs_dir = f'{storage_dir}/handcrops_gt_bbox/{take_uid}'
+        os.makedirs(handcrop_seqs_dir, exist_ok=True)
+
+        for bbox_frame in bbox[bbox_take].keys():
+            take_name = bbox[bbox_take][bbox_frame]["metadata"]["take_name"]
+            for hand_name in ["left", "right"]:
+                if len(bbox[bbox_take][bbox_frame][hand_name+'_hand_bbox']) == 0:
+                    continue
+                hand_box = bbox[bbox_take][bbox_frame][hand_name+'_hand_bbox']
+                # change to xywh
+                hand_box = np.array(hand_box).astype(int)
+                hand_box[2] = hand_box[2] - hand_box[0]
+                hand_box[3] = hand_box[3] - hand_box[1]
+                box_squared = square_expand_box(hand_box, box2=None)
+                img_path = os.path.join(args.gt_output_dir, "image/undistorted/test", take_name, '{:06d}.jpg'.format(int(bbox_frame)))
+                image = cv2.imread(img_path)
+                # image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                image = Image.fromarray(np.uint8(image)).convert('RGB')
+                handcrop = crop_resize(image, box_squared, HOCROP_SIZE)
+                frame_name = '{}_{:06d}.jpg'.format(hand_name, int(bbox_frame))
+                # handcrop = cv2.rotate(np.array(handcrop), cv2.ROTATE_90_CLOCKWISE)
+                cv2.imwrite(osp.join(handcrop_seqs_dir, frame_name), np.array(handcrop))
 
 
 if __name__ == '__main__':
-    uid = '98f58f0f-53d6-4e41-bf41-d8d74ccbc37c'
-    run_hand_crops(uid=uid)
+
+    args = arg_parse()
+
+    # read bbox from annotation file
+    bbox_annot_file = os.path.join(args.gt_output_dir, "annotation/manual/ego_pose_gt_anno_test_public.json")
+    assert os.path.exists(bbox_annot_file), f"no file found {bbox_annot_file}"
+    with open(bbox_annot_file) as f:
+        bbox = json.load(f)
+
+    run_hand_crops(bbox, args)
