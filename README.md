@@ -1,4 +1,4 @@
-Inference by 
+[METRO](https://github.com/microsoft/MeshTransformer) inference on [Ego-Exo4D](https://eval.ai/web/challenges/challenge-page/2249/overview).
 
 # Setup the environment
 
