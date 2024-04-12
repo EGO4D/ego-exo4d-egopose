@@ -21,7 +21,7 @@
         , "window_size": 20
         , "single_joint":true
         , "use_aria":true
-        , "split": "test"
+        , "split": "val" //Evaluate on val set
         ,"use_pseudo":false //Flag to use pseudo-groundtruth annotations for training.
         ,"coord": null //null for per-frame normalization, "aria" for first-frame normalization, "global" for global coordinates
         ,"root": "~/Ego-Exo4D/" //ADD PATH TO EGO-EXO4D ANNOTATIONS
