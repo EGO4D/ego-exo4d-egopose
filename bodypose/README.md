@@ -10,7 +10,7 @@ Implementation of a 3D body pose estimation baseline model in [Ego-Exo4D](https:
 Follow the instructions below to set up the environment for model training, testing, and inference.
 
     
-    conda env create -f env.yaml
+    conda env create -f environment.yaml
     
 
 ## Data Preparation 
