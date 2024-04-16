@@ -67,6 +67,7 @@ python3 scripts/download.py \
     --ego4d_data_dir $egoexo_output_dir \
     --parts take_vrs_noimagestream
 ```
+Install Project Aria Tools for C++ as in [here (Build from source without visualization)](https://facebookresearch.github.io/projectaria_tools/docs/data_utilities/installation/installation_cpp).  
 Generate Aria calibration JSON files which will be used later for Aria image undistortion. Default is to generate calibration file for all manually annotated takes in all splits.
 ```
 python3 main.py \
